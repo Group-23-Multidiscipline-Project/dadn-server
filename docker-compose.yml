@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  api:
+    container_name: nestjs_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    command: pnpm start:dev
+    networks:
+      - nestjs-network
+
+networks:
+  nestjs-network:

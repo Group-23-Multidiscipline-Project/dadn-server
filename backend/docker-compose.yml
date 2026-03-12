@@ -12,10 +12,38 @@ services:
     ports:
       - '3000:3000'
     env_file:
-      - .env
+      .env
+    depends_on:
+      - mongo
+      - mosquitto
     command: pnpm start:dev
+    networks:
+      - nestjs-network
+
+  mongo:
+    container_name: mongo
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - nestjs-network
+
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - '1883:1883'
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     networks:
       - nestjs-network
 
 networks:
   nestjs-network:
+
+volumes:
+  mongo_data:

@@ -1,107 +1,101 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Smart Agri Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+1. **Data Processing Service (NestJS)**
+   - Subscribe MQTT bằng wildcard `#` (nhận tất cả topic hiện có ngay khi backend start).
+   - Validate payload đến theo rule từng topic.
+   - Lưu MongoDB theo schema time-series, có timestamp để tối ưu truy vấn theo thời gian.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+2. **Decision Service (Python + scikit-fuzzy)**
+   - Subscribe độ ẩm đất, độ ẩm không khí và disease risk từ AI model.
+   - Suy luận fuzzy để quyết định tưới.
+   - Publish lệnh điều khiển về topic irrigation của Yolo:Bit.
 
-## Description
+3. **API Gateway Service (NestJS)**
+   - Cung cấp REST API cho dashboard lấy lịch sử sensor, trạng thái tưới, nhật ký hệ thống.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 1) Yêu cầu môi trường
 
-## Prerequisites
+- Node.js 20+
+- pnpm 8+
+- MongoDB 6+
+- MQTT broker (Mosquitto/EMQX)
+- Python 3.11+ (cho decision service)
 
-Before you begin, ensure you have the following installed on your system:
+Tải `pnpm`
 
-- **Node.js** (v24)
-- **pnpm** (v8.0.0 or higher) - Package manager
-  ```bash
-  npm install -g pnpm
-  ```
-- **Git** - Version control
-- **Docker** (optional)
+```bash
+npm i -g pnpm
+```
 
+## 2) Biến môi trường
 
-### 1. Install Dependencies
+```bash
+cp -R .env.example .env
+```
+
+Chỉnh sửa các biến môi trường cho phù hợp
+
+## 3) Chạy Backend
 
 ```bash
 pnpm install
+pnpm run start:dev
 ```
 
-This will install all project dependencies using the lockfile (`pnpm-lock.yaml`).
+Backend sẽ:
 
-### 2. Environment Configuration
+- Mở HTTP API ở cổng `PORT`.
+- Kết nối MQTT broker theo `MQTT_URL`.
+- Subscribe toàn bộ topic thông qua pattern `#`.
 
-Create a `.env` file in the project root with necessary environment variables (see `.env.example` if available).
+### 4) Chạy MQTT broker.
 
+- Homebrew (Mac): `brew services start mosquitto`
 
-## Compile and run the project
+- Linux: `sudo systemctl start mosquitto`
+
+- Rồi chạy:
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+mosquitto -c ./mosquitto/mosquitto.conf
 ```
 
-## Run in Docker (recommended)
-```bash
-docker compose up -d
+## 5) MQTT ingest format
+
+### Ví dụ sensor payload
+
+Topic:
+`yolofarm/node_01/sensors/soil_moisture`
+
+Payload:
+
+```json
+{"value": 40}
 ```
 
-## Contribution Workflow
+Backend sẽ validate `value` là số và lưu MongoDB vào collection time-series `sensor_readings`.
 
-When contributing, always create your working branch from `main` and use the following branch naming conventions:
+## 6) REST API cho Dashboard
 
-- `feat/...` for new features
-- `fix/...` for bug fixes
-- `hotfix/...` for urgent production fixes
+Vào `localhost:3000/api` để xem documentation.
 
-Example:
+- `GET /api/sensors/history?nodeId=node_01&sensor=soil_moisture&limit=200`
+- `GET /api/irrigation/status?nodeId=node_01`
+- `GET /api/system/logs?level=warn&limit=100`
 
-```bash
-git checkout main
-git pull origin main
-git checkout -b feat/your-feature-name
-```
+## 6) Decision Service (Python)
 
-For fixes:
+Tham khảo hướng dẫn chi tiết tại thư mục `decision-service`.
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b fix/your-fix-name
+cd decision-service
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+MQTT_URL=mqtt://localhost:1883 python service.py
 ```
 
-For hotfixes:
+Service sẽ publish decision lên:
 
-```bash
-git checkout main
-git pull origin main
-git checkout -b hotfix/your-hotfix-name
-```
-
-Always fetch the latest changes:
-```bash
-git fetch -a
-```
+- `yolofarm/{node_id}/control/irrigation`
+- `yolofarm/{node_id}/status/irrigation`

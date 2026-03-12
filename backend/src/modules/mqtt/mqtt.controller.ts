@@ -1,0 +1,43 @@
+import { Controller, Get, Query } from '@nestjs/common';
+import { IrrigationStatusQueryDto } from './dto/irrigation-status-query.dto';
+import { SensorHistoryQueryDto } from './dto/sensor-history-query.dto';
+import { SystemLogQueryDto } from './dto/system-log-query.dto';
+import { MqttService } from './mqtt.service';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+
+@ApiTags('mqtt')
+@Controller('mqtt')
+export class MqttController {
+  constructor(private readonly mqttService: MqttService) {}
+
+  @Get('sensors/history')
+  @ApiOperation({ summary: 'Get sensor history' })
+  @ApiQuery({ name: 'nodeId', required: false, type: String })
+  @ApiQuery({ name: 'sensor', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
+  getSensorHistory(@Query() query: SensorHistoryQueryDto) {
+    return this.mqttService.getSensorHistory(query);
+  }
+
+  @Get('irrigation/status')
+  @ApiOperation({ summary: 'Get irrigation status' })
+  @ApiQuery({ name: 'nodeId', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 100 })
+  getIrrigationStatus(@Query() query: IrrigationStatusQueryDto) {
+    return this.mqttService.getIrrigationStatus(query);
+  }
+
+  @Get('system/logs')
+  @ApiOperation({ summary: 'Get system logs' })
+  @ApiQuery({
+    name: 'level',
+    required: false,
+    enum: ['debug', 'info', 'warn', 'error'],
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
+  getSystemLogs(@Query() query: SystemLogQueryDto) {
+    return this.mqttService.getSystemLogs(query);
+  }
+}

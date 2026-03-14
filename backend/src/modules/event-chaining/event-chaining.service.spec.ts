@@ -480,8 +480,6 @@ describe('EventChainingService', () => {
         deviceId: 'node_01',
         state: ChainState.WATERING,
         action: 'start_pump',
-        from: '2026-03-14T10:00:00.000Z',
-        to: '2026-03-14T11:00:00.000Z',
         limit: 50,
       });
 
@@ -490,10 +488,6 @@ describe('EventChainingService', () => {
           deviceId: 'node_01',
           state: ChainState.WATERING,
           action: 'start_pump',
-          timestamp: {
-            $gte: new Date('2026-03-14T10:00:00.000Z'),
-            $lte: new Date('2026-03-14T11:00:00.000Z'),
-          },
         }),
       );
       expect(sort).toHaveBeenCalledWith({ timestamp: -1 });

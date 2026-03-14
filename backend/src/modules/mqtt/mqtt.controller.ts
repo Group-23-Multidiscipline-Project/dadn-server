@@ -28,8 +28,6 @@ export class MqttController {
   @ApiOperation({ summary: 'Get sensor history' })
   @ApiQuery({ name: 'nodeId', required: false, type: String })
   @ApiQuery({ name: 'sensor', required: false, type: String })
-  @ApiQuery({ name: 'from', required: false, type: String })
-  @ApiQuery({ name: 'to', required: false, type: String })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
   getSensorHistory(@Query() query: SensorHistoryQueryDto) {
     return this.mqttService.getSensorHistory(query);

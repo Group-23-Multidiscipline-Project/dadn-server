@@ -316,20 +316,6 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       filter['action'] = query.action;
     }
 
-    if (query.from || query.to) {
-      const timestampFilter: { $gte?: Date; $lte?: Date } = {};
-
-      if (query.from) {
-        timestampFilter.$gte = new Date(query.from);
-      }
-
-      if (query.to) {
-        timestampFilter.$lte = new Date(query.to);
-      }
-
-      filter['timestamp'] = timestampFilter;
-    }
-
     return this.eventLogModel
       .find(filter)
       .sort({ timestamp: -1 })

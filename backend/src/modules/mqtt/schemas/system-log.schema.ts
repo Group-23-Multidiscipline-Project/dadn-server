@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 
 export type MqttSystemLogDocument = HydratedDocument<MqttSystemLog>;
 
-@Schema({ collection: 'system_logs', versionKey: false })
+@Schema({ collection: 'mqtt_system_logs', versionKey: false })
 export class MqttSystemLog {
   @Prop({ required: true })
   level: 'debug' | 'info' | 'warn' | 'error';

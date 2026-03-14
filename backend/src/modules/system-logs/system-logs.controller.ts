@@ -13,8 +13,6 @@ export class SystemLogsController {
   @ApiQuery({ name: 'deviceId', required: false, type: String })
   @ApiQuery({ name: 'eventType', required: false, type: String })
   @ApiQuery({ name: 'traceId', required: false, type: String })
-  @ApiQuery({ name: 'from', required: false, type: String })
-  @ApiQuery({ name: 'to', required: false, type: String })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
   getLogs(@Query() query: SystemLogsQueryDto) {
     return this.systemLogsService.getLogs(query);

@@ -82,20 +82,6 @@ export class MqttService {
           : { $in: [query.sensor, normalizedSensor] };
     }
 
-    if (query.from || query.to) {
-      const timestampFilter: { $gte?: Date; $lte?: Date } = {};
-
-      if (query.from) {
-        timestampFilter.$gte = new Date(query.from);
-      }
-
-      if (query.to) {
-        timestampFilter.$lte = new Date(query.to);
-      }
-
-      filter['timestamp'] = timestampFilter;
-    }
-
     const readings = (await this.sensorReadingModel
       .find(filter)
       .sort({ timestamp: -1 })

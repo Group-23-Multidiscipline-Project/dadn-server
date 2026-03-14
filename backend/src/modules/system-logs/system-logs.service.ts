@@ -42,20 +42,6 @@ export class SystemLogsService {
       filter['traceId'] = query.traceId;
     }
 
-    if (query.from || query.to) {
-      const occurredAtFilter: { $gte?: Date; $lte?: Date } = {};
-
-      if (query.from) {
-        occurredAtFilter.$gte = new Date(query.from);
-      }
-
-      if (query.to) {
-        occurredAtFilter.$lte = new Date(query.to);
-      }
-
-      filter['occurredAt'] = occurredAtFilter;
-    }
-
     return this.systemLogModel
       .find(filter)
       .sort({ occurredAt: -1 })

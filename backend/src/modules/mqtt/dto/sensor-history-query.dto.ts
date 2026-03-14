@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SensorHistoryQueryDto {
@@ -25,22 +18,6 @@ export class SensorHistoryQueryDto {
   @IsOptional()
   @IsString()
   sensor?: string;
-
-  @ApiPropertyOptional({
-    description: 'Start date-time in ISO 8601 format',
-    example: '2026-03-01T00:00:00.000Z',
-  })
-  @IsOptional()
-  @IsDateString()
-  from?: string;
-
-  @ApiPropertyOptional({
-    description: 'End date-time in ISO 8601 format',
-    example: '2026-03-12T23:59:59.999Z',
-  })
-  @IsOptional()
-  @IsDateString()
-  to?: string;
 
   @ApiPropertyOptional({
     description: 'Maximum number of records to return',

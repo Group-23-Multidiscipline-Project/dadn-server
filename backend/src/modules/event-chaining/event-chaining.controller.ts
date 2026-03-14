@@ -65,8 +65,6 @@ export class EventChainingController {
   @ApiQuery({ name: 'topic', required: false, type: String })
   @ApiQuery({ name: 'state', required: false, enum: ['MONITOR', 'WATERING', 'RECOVER'] })
   @ApiQuery({ name: 'action', required: false, type: String })
-  @ApiQuery({ name: 'from', required: false, type: String })
-  @ApiQuery({ name: 'to', required: false, type: String })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
   async getEventLogs(@Query() query: EventLogQueryDto) {
     return this.eventChainingService.getEventLogs(query);

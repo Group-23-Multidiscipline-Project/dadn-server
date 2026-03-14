@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SystemLogsQueryDto {
@@ -33,22 +26,6 @@ export class SystemLogsQueryDto {
   @IsOptional()
   @IsString()
   traceId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Start date-time in ISO 8601 format (filter by occurredAt)',
-    example: '2026-03-14T10:00:00.000Z',
-  })
-  @IsOptional()
-  @IsDateString()
-  from?: string;
-
-  @ApiPropertyOptional({
-    description: 'End date-time in ISO 8601 format (filter by occurredAt)',
-    example: '2026-03-14T11:00:00.000Z',
-  })
-  @IsOptional()
-  @IsDateString()
-  to?: string;
 
   @ApiPropertyOptional({
     description: 'Maximum number of records to return',

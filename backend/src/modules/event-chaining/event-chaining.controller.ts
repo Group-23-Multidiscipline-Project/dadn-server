@@ -15,6 +15,11 @@ import { ConfirmWateringDto } from './dto/confirm-watering.dto';
 export class EventChainingController {
   constructor(private readonly eventChainingService: EventChainingService) {}
 
+  @Get()
+  getHello() {
+    return 'Server is runnning';
+  }
+
   @Post('sensor-data')
   @HttpCode(HttpStatus.OK)
   async processSensorData(@Body() dto: SensorDataDto) {
@@ -27,7 +32,7 @@ export class EventChainingController {
     return this.eventChainingService.confirmWatering(dto);
   }
 
-  @Get('event-chaining/state/:deviceId')
+  @Get('state/:deviceId')
   @HttpCode(HttpStatus.OK)
   async getDeviceState(@Param('deviceId') deviceId: string) {
     return this.eventChainingService.getDeviceState(deviceId);

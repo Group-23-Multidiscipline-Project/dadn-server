@@ -15,8 +15,10 @@ import { EventChainingGateway } from './event-chaining.gateway';
 
 const MONITOR_HUMIDITY_THRESHOLD = 20;
 const MONITOR_LIGHT_THRESHOLD = 500;
-const WATERING_DURATION_MS = 300_000;
-const RECOVER_DURATION_MS = 120_000;
+// const WATERING_DURATION_MS = 300_000;
+const WATERING_DURATION_MS = 5000;
+// const RECOVER_DURATION_MS = 120_000;
+const RECOVER_DURATION_MS = 2000;
 
 const CHAIN_EVENT_TYPES = [
   'SENSOR_RECEIVED',
@@ -30,6 +32,7 @@ const CHAIN_EVENT_TYPES = [
 
 interface SensorDataPayload {
   deviceId: string;
+  topic?: string;
   humidity: number;
   light: number;
 }
@@ -91,6 +94,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
         humidity: payload.humidity,
         light: payload.light,
         deviceId: payload.deviceId,
+        topic: payload.topic,
       },
     });
 
@@ -105,6 +109,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
 
     const log = await this.eventLogModel.create({
       deviceId: payload.deviceId,
+      topic: payload.topic,
       humidity: payload.humidity,
       light: payload.light,
       state: persistedState.state,
@@ -113,6 +118,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       metadata: {
         traceId,
         trigger: 'sensor-data',
+        topic: payload.topic,
         durationSeconds: decision.durationSeconds,
       },
     });

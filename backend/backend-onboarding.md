@@ -88,3 +88,42 @@ Mục tiêu: lưu audit log của event chain vào `system_logs`.
 4. Check FE đã subscribe namespace `/events` và lắng nghe đúng event name.
 
 - Dùng endpoint `GET /event-chaining/state/:deviceId` để FE/hardware poll trạng thái hiện tại.
+
+---
+Backend sẽ:
+
+- Mở HTTP API ở cổng `PORT`.
+- Kết nối MQTT broker theo `MQTT_URL`.
+- Subscribe toàn bộ topic thông qua pattern `#`.
+
+### 4) Chạy MQTT broker.
+
+- Homebrew (Mac): `brew services start mosquitto`
+
+- Linux: `sudo systemctl start mosquitto`
+
+- Rồi chạy:
+
+```bash
+mosquitto -c ./mosquitto/mosquitto.conf
+```
+
+## 5) MQTT ingest format
+
+### Ví dụ sensor payload
+
+Topic:
+`yolofarm/node_01/sensors/soil_moisture`
+
+Payload:
+
+```json
+{"value": 40}
+```
+
+Backend giữ nguyên ingest format `{"value": ...}` và tự map theo sensor topic để tương thích dữ liệu nghiệp vụ:
+
+- `soil_moisture`, `moisture` -> `humidity`
+- `light`, `light_intensity`, `lux`, `ldr` -> `light`
+
+Khi đã có đủ `humidity` và `light` cho cùng `nodeId`, backend tự bridge vào luồng event-chaining (`processSensorData`) để lưu dữ liệu đúng format cũ (`humidity`, `light`) và giữ nguyên state machine hiện tại.

@@ -12,6 +12,9 @@ export class EventLog {
   @Prop({ required: true, index: true })
   deviceId: string;
 
+  @Prop({ index: true })
+  topic?: string;
+
   @Prop({ type: Number, min: 0, max: 100 })
   humidity?: number;
 
@@ -41,4 +44,5 @@ export class EventLog {
 export const EventLogSchema = SchemaFactory.createForClass(EventLog);
 
 EventLogSchema.index({ deviceId: 1, timestamp: -1 });
+EventLogSchema.index({ topic: 1, timestamp: -1 });
 EventLogSchema.index({ state: 1, timestamp: -1 });

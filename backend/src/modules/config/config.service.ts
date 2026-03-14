@@ -18,6 +18,10 @@ export class ConfigService {
     return this.get('PORT') ?? '3000';
   }
 
+  get mqtt() {
+    return this.get('MQTT_URL') ?? 'http://localhost:1883';
+  }
+
   get databaseConfig() {
     return {
       mongoUri: this.get('MONGO_URI'),

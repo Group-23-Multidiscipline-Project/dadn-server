@@ -1,10 +1,18 @@
-import { IsNumber, IsString, Max, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SensorDataDto {
   @ApiProperty({ example: 'device_01', description: 'ID định danh thiết bị' })
   @IsString()
   deviceId: string;
+
+  @ApiPropertyOptional({
+    example: 'yolofarm/node1/sensors/soil_moisture',
+    description: 'MQTT topic nguồn (nếu dữ liệu đi từ MQTT bridge)',
+  })
+  @IsOptional()
+  @IsString()
+  topic?: string;
 
   @ApiProperty({
     example: 15,

@@ -14,8 +14,9 @@ const int mqtt_port = 1883;
 // Cấu hình topic
 const String NODE_ID = "node_01"; 
 String soil_topic = "yolofarm/" + NODE_ID + "/sensors/soil_moisture";
-String air_topic = "yolofarm/" + NODE_ID + "/sensors/air_humidity";
+String air_topic = "yolofarm/" + NODE_ID + "/sensors/light";
 String control_topic = "yolofarm/" + NODE_ID + "/control/irrigation";
+String status_topic = "yolofarm/" + NODE_ID + "/status/irrigation";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -37,12 +38,12 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     return;
   }
 
-  // Lấy giá trị action ("WATER_ON" hoặc "WATER_OFF")
+  // Lấy giá trị action ("start_pump" hoặc "stop_pump")
   String action = doc["action"].as<String>();
 
-  if (action == "WATER_ON") {
+  if (action == "start_pump") {
     pump_turn_on();   // Kích hoạt Relay
-  } else if (action == "WATER_OFF") {
+  } else if (action == "stop_pump") {
     pump_turn_off();  // Tắt Relay
   }
 }
@@ -98,14 +99,14 @@ void TaskMQTT(void *pvParameters) {
       serializeJson(docSoil, bufferSoil);
       client.publish(soil_topic.c_str(), bufferSoil);
 
-      // JSON Độ ẩm không khí: {"value": 60.5}
-      StaticJsonDocument<100> docAir;
-      docAir["value"] = currentAirHumidity;
-      char bufferAir[100];
-      serializeJson(docAir, bufferAir);
-      client.publish(air_topic.c_str(), bufferAir);
+      // JSON Cuong do anh sang: {"value": 300}
+      StaticJsonDocument<100> docLight;
+      docLight["value"] = currentLightLevel;
+      char bufferLight[100];
+      serializeJson(docLight, bufferLight);
+      client.publish(air_topic.c_str(), bufferLight);
       
-      Serial.printf("[MQTT] Publish -> Soil: %.1f%% | Air Hum: %.1f%%\n", currentSoilMoisture, currentAirHumidity);
+      Serial.printf("[MQTT] Publish -> Soil: %.1f%% | Light: %.1f%%\n", currentSoilMoisture, currentLightLevel);
     }
 
     // Delay 10ms để FreeRTOS có thể chuyển ngữ cảnh sang Task khác

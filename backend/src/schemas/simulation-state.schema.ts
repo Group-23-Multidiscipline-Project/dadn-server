@@ -36,7 +36,10 @@ class RelaySimulation {
   fertigation: RelayChannel;
 }
 
-@Schema({ timestamps: { createdAt: false, updatedAt: 'updatedAt' } })
+@Schema({
+  collection: 'simulation_states',
+  timestamps: { createdAt: false, updatedAt: 'updatedAt' },
+})
 export class SimulationState {
   // Fixed to "current" — always upserted by _id
   @Prop({ type: String })

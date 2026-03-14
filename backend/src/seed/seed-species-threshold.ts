@@ -17,12 +17,13 @@ const SpeciesThresholdSchema = new mongoose.Schema(
       light: { type: ThresholdRangeSchema, required: true },
     },
   },
-  { timestamps: true },
+  { collection: 'species_thresholds', timestamps: true },
 );
 
 const SpeciesThresholdModel = mongoose.model(
   'SpeciesThreshold',
   SpeciesThresholdSchema,
+  'species_thresholds',
 );
 
 async function run() {

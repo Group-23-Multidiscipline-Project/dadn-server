@@ -21,7 +21,7 @@ class Thresholds {
   light: ThresholdRange;
 }
 
-@Schema({ timestamps: true })
+@Schema({ collection: 'species_thresholds', timestamps: true })
 export class SpeciesThreshold {
   @Prop({ required: true, unique: true })
   speciesName: string;

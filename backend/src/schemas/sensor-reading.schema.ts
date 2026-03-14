@@ -11,7 +11,10 @@ class Readings {
   light: number;
 }
 
-@Schema({ timestamps: { createdAt: 'timestamp', updatedAt: false } })
+@Schema({
+  collection: 'sensor_readings',
+  timestamps: { createdAt: 'timestamp', updatedAt: false },
+})
 export class SensorReading {
   @Prop({ required: true })
   deviceId: string;

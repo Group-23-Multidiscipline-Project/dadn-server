@@ -36,8 +36,14 @@ class Decisions {
   fertigation: ChannelDecision;
 }
 
-@Schema({ timestamps: { createdAt: 'timestamp', updatedAt: false } })
+@Schema({
+  collection: 'decision_logs',
+  timestamps: { createdAt: 'timestamp', updatedAt: false },
+})
 export class DecisionLog {
+  @Prop({ required: true, index: true })
+  traceId: string;
+
   @Prop({ type: Types.ObjectId, ref: 'SensorReading', required: true })
   sensorReadingId: Types.ObjectId;
 
@@ -61,3 +67,4 @@ export const DecisionLogSchema = SchemaFactory.createForClass(DecisionLog);
 
 DecisionLogSchema.index({ timestamp: -1 });
 DecisionLogSchema.index({ displayStatus: 1 });
+DecisionLogSchema.index({ traceId: 1, timestamp: 1 });

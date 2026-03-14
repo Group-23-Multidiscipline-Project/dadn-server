@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 import {
   SensorReading,
@@ -18,6 +19,7 @@ import {
   SimulationStateDocument,
 } from '../../schemas/simulation-state.schema';
 import { InjectModel } from '@nestjs/mongoose';
+import { EventBusService } from '../event-bus/event-bus.service';
 
 interface SensorPushPayload {
   deviceId: string;
@@ -40,15 +42,32 @@ export class DecisionService {
 
     @InjectModel(SimulationState.name)
     private readonly simulationStateModel: Model<SimulationStateDocument>,
+
+    private readonly eventBusService: EventBusService,
   ) {}
 
   async processSensorPush(payload: SensorPushPayload) {
     const { deviceId, soilMoisture, light, speciesName = 'Tomato' } = payload;
+    const traceId = randomUUID();
+
+    this.emitChainEvent('SENSOR_RECEIVED', {
+      traceId,
+      deviceId,
+      source: 'DecisionService.processSensorPush',
+      data: { soilMoisture, light, speciesName },
+    });
 
     // Step 1: Save sensor reading
     const reading = await this.sensorReadingModel.create({
       deviceId,
       readings: { soilMoisture, light },
+    });
+
+    this.emitChainEvent('SENSOR_STORED', {
+      traceId,
+      deviceId,
+      source: 'DecisionService.processSensorPush',
+      data: { sensorReadingId: reading._id.toString() },
     });
 
     // Step 2: Fetch species thresholds
@@ -59,18 +78,47 @@ export class DecisionService {
       );
     }
 
+    this.emitChainEvent('THRESHOLD_RESOLVED', {
+      traceId,
+      deviceId,
+      source: 'DecisionService.processSensorPush',
+      data: {
+        speciesName,
+        thresholds: {
+          soilMoisture: threshold.thresholds.soilMoisture,
+          light: threshold.thresholds.light,
+        },
+      },
+    });
+
     // Step 3: Make decisions
     const decisions = this.makeDecision(
       { soilMoisture, light },
       threshold.thresholds,
     );
 
+    this.emitChainEvent('DECISION_COMPUTED', {
+      traceId,
+      deviceId,
+      source: 'DecisionService.processSensorPush',
+      data: { decisions },
+    });
+
     // Step 4: Save decision log
     const log = await this.decisionLogModel.create({
+      traceId,
       sensorReadingId: reading._id,
       inputReadings: { soilMoisture, light },
       decisions,
       displayStatus: 'pending',
+    });
+
+    this.emitChainEvent('DECISION_LOG_CREATED', {
+      traceId,
+      deviceId,
+      decisionLogId: log._id.toString(),
+      source: 'DecisionService.processSensorPush',
+      data: { displayStatus: 'pending' },
     });
 
     // Step 5: Upsert simulation state (for web polling)
@@ -86,6 +134,17 @@ export class DecisionService {
       },
       { upsert: true, new: true },
     );
+
+    this.emitChainEvent('SIMULATION_STATE_UPDATED', {
+      traceId,
+      deviceId,
+      decisionLogId: log._id.toString(),
+      source: 'DecisionService.processSensorPush',
+      data: {
+        simulationStateId: 'current',
+        relaySimulation: this.buildRelayDisplay(decisions),
+      },
+    });
 
     return { reading, log, decisions };
   }
@@ -208,6 +267,26 @@ export class DecisionService {
       throw new NotFoundException(`Không tìm thấy decision log: ${id}`);
     }
 
+    this.emitChainEvent('DECISION_ACKNOWLEDGED', {
+      traceId: log.traceId ?? `legacy-${log._id.toString()}`,
+      decisionLogId: log._id.toString(),
+      source: 'DecisionService.acknowledgeDecisionLog',
+      data: { displayStatus: 'acknowledged' },
+    });
+
     return log;
+  }
+
+  private emitChainEvent(
+    eventType: string,
+    payload: {
+      traceId: string;
+      deviceId?: string;
+      decisionLogId?: string;
+      source: string;
+      data?: Record<string, unknown>;
+    },
+  ) {
+    this.eventBusService.emit(eventType, payload);
   }
 }

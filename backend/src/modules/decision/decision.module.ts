@@ -16,6 +16,7 @@ import {
   SimulationState,
   SimulationStateSchema,
 } from '../../schemas/simulation-state.schema';
+import { EventBusModule } from '../event-bus/event-bus.module';
 
 import { DecisionService } from './decision.service';
 import { DecisionController } from './decision.controller';
@@ -23,6 +24,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
+    EventBusModule,
     MongooseModule.forFeature([
       { name: SensorReading.name, schema: SensorReadingSchema },
       { name: DecisionLog.name, schema: DecisionLogSchema },

@@ -317,6 +317,10 @@ export class MqttService {
       nodeId,
       direction,
       action: coerceString(normalizedPayload.action),
+      status:
+        coerceString(normalizedPayload.status) ??
+        coerceString(normalizedPayload.pumpStatus) ??
+        coerceString(normalizedPayload.pump_status),
       reason: coerceString(normalizedPayload.reason),
       shouldIrrigate,
       durationSeconds: durationSeconds >= 0 ? durationSeconds : 0,

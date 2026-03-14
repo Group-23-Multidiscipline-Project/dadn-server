@@ -1,7 +1,13 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'crypto';
 import { Model } from 'mongoose';
+import { connect, MqttClient } from 'mqtt';
 import { EventBusService } from '../event-bus/event-bus.service';
 import { ChainEventRecord } from '../event-bus/event-bus.types';
 import { SystemLogsService } from '../system-logs/system-logs.service';
@@ -15,10 +21,10 @@ import { EventChainingGateway } from './event-chaining.gateway';
 
 const MONITOR_HUMIDITY_THRESHOLD = 20;
 const MONITOR_LIGHT_THRESHOLD = 500;
-// const WATERING_DURATION_MS = 300_000;
-const WATERING_DURATION_MS = 5000;
-// const RECOVER_DURATION_MS = 120_000;
-const RECOVER_DURATION_MS = 2000;
+const WATERING_DURATION_MS = 300_000;
+// const WATERING_DURATION_MS = 5000;
+const RECOVER_DURATION_MS = 120_000;
+// const RECOVER_DURATION_MS = 2000;
 
 const CHAIN_EVENT_TYPES = [
   'SENSOR_RECEIVED',
@@ -51,7 +57,14 @@ interface ChainDecisionResult {
 
 @Injectable()
 export class EventChainingService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(EventChainingService.name);
+  private readonly mqttUrl = process.env.MQTT_URL ?? 'mqtt://localhost:1883';
+  private readonly mqttTopicBase = process.env.MQTT_TOPIC_BASE ?? 'yolofarm';
+  private readonly mqttCommandQos = this.resolveMqttQos(
+    process.env.MQTT_COMMAND_QOS,
+  );
   private readonly unregisterHandlers: Array<() => void> = [];
+  private mqttCommandClient: MqttClient | null = null;
 
   constructor(
     private readonly eventBusService: EventBusService,
@@ -66,6 +79,8 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
+    this.initMqttCommandPublisher();
+
     CHAIN_EVENT_TYPES.forEach((eventType) => {
       const unregister = this.eventBusService.on(
         eventType,
@@ -80,6 +95,11 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy(): void {
     this.unregisterHandlers.forEach((unregister) => unregister());
     this.unregisterHandlers.length = 0;
+
+    if (this.mqttCommandClient) {
+      this.mqttCommandClient.end(true);
+      this.mqttCommandClient = null;
+    }
   }
 
   async processSensorData(payload: SensorDataPayload) {
@@ -444,6 +464,14 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
           durationSeconds: input.durationSeconds,
         },
       });
+
+      this.publishActuatorCommand({
+        traceId: input.traceId,
+        deviceId: input.deviceId,
+        action: 'start_pump',
+        durationSeconds: input.durationSeconds,
+        now: input.now,
+      });
     }
 
     if (input.action === 'stop_pump') {
@@ -456,6 +484,14 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
           state: input.state,
           durationSeconds: input.durationSeconds,
         },
+      });
+
+      this.publishActuatorCommand({
+        traceId: input.traceId,
+        deviceId: input.deviceId,
+        action: 'stop_pump',
+        durationSeconds: input.durationSeconds,
+        now: input.now,
       });
     }
 
@@ -503,5 +539,77 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     },
   ) {
     this.eventBusService.emit(eventType, payload);
+  }
+
+  private initMqttCommandPublisher() {
+    if (this.mqttCommandClient) {
+      return;
+    }
+
+    this.mqttCommandClient = connect(this.mqttUrl);
+
+    this.mqttCommandClient.on('connect', () => {
+      this.logger.log(
+        `MQTT actuator publisher connected (${this.mqttUrl}) qos=${this.mqttCommandQos}`,
+      );
+    });
+
+    this.mqttCommandClient.on('error', (error) => {
+      this.logger.error(
+        `MQTT actuator publisher error: ${error.message}`,
+        error.stack,
+      );
+    });
+  }
+
+  private publishActuatorCommand(input: {
+    traceId: string;
+    deviceId: string;
+    action: 'start_pump' | 'stop_pump';
+    durationSeconds: number;
+    now: Date;
+  }) {
+    const topic = `${this.mqttTopicBase}/${input.deviceId}/control/irrigation`;
+    const payload = JSON.stringify({
+      traceId: input.traceId,
+      action: input.action,
+      status: input.action === 'start_pump' ? 'pending_on' : 'pending_off',
+      shouldIrrigate: input.action === 'start_pump',
+      durationSeconds: input.durationSeconds,
+      timestamp: input.now.toISOString(),
+    });
+
+    if (!this.mqttCommandClient) {
+      this.logger.warn(
+        `MQTT actuator publisher is not initialized, skip publish topic=${topic}`,
+      );
+      return;
+    }
+
+    this.mqttCommandClient.publish(
+      topic,
+      payload,
+      { qos: this.mqttCommandQos },
+      (error?: Error) => {
+        if (error) {
+          this.logger.error(
+            `Failed to publish actuator command topic=${topic}: ${error.message}`,
+            error.stack,
+          );
+          return;
+        }
+
+        this.logger.log(`Published actuator command topic=${topic} ${payload}`);
+      },
+    );
+  }
+
+  private resolveMqttQos(rawQos?: string) {
+    const parsed = Number(rawQos ?? '1');
+    if (parsed === 0 || parsed === 1 || parsed === 2) {
+      return parsed;
+    }
+
+    return 1;
   }
 }

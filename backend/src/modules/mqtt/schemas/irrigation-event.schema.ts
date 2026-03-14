@@ -37,6 +37,9 @@ export class IrrigationEvent {
   action?: string;
 
   @Prop()
+  status?: string;
+
+  @Prop()
   reason?: string;
 
   @Prop({ default: false })

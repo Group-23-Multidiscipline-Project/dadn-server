@@ -15,6 +15,7 @@ set -euo pipefail
 #   PROCESSING_DELAY_SEC=1
 #   WATERING_WAIT_SEC=6
 #   RECOVER_WAIT_SEC=3
+#   SEND_STATUS_ACK=true
 #   TEST_CASE=all|1|2|3|4|5
 
 MQTT_HOST="${MQTT_HOST:-localhost}"
@@ -26,6 +27,7 @@ API_BASE_URL="${API_BASE_URL:-http://localhost:3000}"
 PROCESSING_DELAY_SEC="${PROCESSING_DELAY_SEC:-1}"
 WATERING_WAIT_SEC="${WATERING_WAIT_SEC:-6}"
 RECOVER_WAIT_SEC="${RECOVER_WAIT_SEC:-3}"
+SEND_STATUS_ACK="${SEND_STATUS_ACK:-true}"
 TEST_CASE="${TEST_CASE:-all}"
 
 if ! command -v mosquitto_pub >/dev/null 2>&1; then
@@ -78,6 +80,26 @@ publish_pair() {
   sleep "${PROCESSING_DELAY_SEC}"
 }
 
+publish_irrigation_status() {
+  local action="$1"
+  local status="$2"
+  local should_irrigate="$3"
+  local duration_seconds="$4"
+
+  local topic="${MQTT_TOPIC_BASE}/${MQTT_NODE_ID}/status/irrigation"
+  local payload
+  payload="{\"action\":\"${action}\",\"status\":\"${status}\",\"shouldIrrigate\":${should_irrigate},\"durationSeconds\":${duration_seconds},\"timestamp\":\"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}"
+
+  mosquitto_pub \
+    -h "${MQTT_HOST}" \
+    -p "${MQTT_PORT}" \
+    -q "${MQTT_QOS}" \
+    -t "${topic}" \
+    -m "${payload}"
+
+  log_info "published ${topic} ${payload}"
+}
+
 confirm_watering() {
   local payload
   payload="{\"deviceId\":\"${MQTT_NODE_ID}\",\"state\":\"WATERING done\"}"
@@ -106,6 +128,9 @@ run_case_1() {
 run_case_2() {
   log_info "Case 2: MONITOR -> WATERING (dat nguong kho han)"
   publish_pair 10 600
+  if [[ "${SEND_STATUS_ACK}" == "true" ]]; then
+    publish_irrigation_status "start_pump" "pump_on" true 5
+  fi
   get_state
 }
 
@@ -119,6 +144,9 @@ run_case_4() {
   log_info "Case 4: cho ${WATERING_WAIT_SEC}s de het WATERING, sau do -> RECOVER"
   sleep "${WATERING_WAIT_SEC}"
   confirm_watering
+  if [[ "${SEND_STATUS_ACK}" == "true" ]]; then
+    publish_irrigation_status "stop_pump" "pump_off" false 2
+  fi
   get_state
 }
 

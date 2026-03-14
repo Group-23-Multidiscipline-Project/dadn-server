@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "sensor_task.h"
 #include "mqtt_task.h"
+#include "led_blinky.h"
+#include "neo_blinky.h"
 
 void setup() {
   Serial.begin(115200);

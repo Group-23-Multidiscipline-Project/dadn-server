@@ -6,11 +6,13 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { EventChainingService } from './event-chaining.service';
 import { SensorDataDto } from './dto/sensor-data.dto';
 import { ConfirmWateringDto } from './dto/confirm-watering.dto';
+import { EventLogQueryDto } from './dto/event-log-query.dto';
 
 @ApiTags('Event Chaining')
 @Controller()
@@ -54,5 +56,19 @@ export class EventChainingController {
   @ApiParam({ name: 'deviceId', example: 'device_01' })
   async getDeviceState(@Param('deviceId') deviceId: string) {
     return this.eventChainingService.getDeviceState(deviceId);
+  }
+
+  @Get('event-logs')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get event logs history' })
+  @ApiQuery({ name: 'deviceId', required: false, type: String })
+  @ApiQuery({ name: 'topic', required: false, type: String })
+  @ApiQuery({ name: 'state', required: false, enum: ['MONITOR', 'WATERING', 'RECOVER'] })
+  @ApiQuery({ name: 'action', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
+  async getEventLogs(@Query() query: EventLogQueryDto) {
+    return this.eventChainingService.getEventLogs(query);
   }
 }

@@ -108,7 +108,7 @@ Thiết bị chạy theo 3 trạng thái:
 **Query params**
 
 - `nodeId`: lọc theo node.
-- `sensor`: lọc theo sensor key.
+- `sensor`: lọc theo sensor key (`soil_moisture` cho dữ liệu `humidity`, hoặc `light`).
 - `from`: ISO datetime.
 - `to`: ISO datetime.
 - `limit`: mặc định `200`, tối đa `1000`.
@@ -117,6 +117,7 @@ Thiết bị chạy theo 3 trạng thái:
 
 ```text
 /mqtt/sensors/history?nodeId=node_01&sensor=soil_moisture&limit=50
+/mqtt/sensors/history?nodeId=node_01&sensor=light&limit=50
 ```
 
 **Response sample**
@@ -127,12 +128,24 @@ Thiết bị chạy theo 3 trạng thái:
     "topic": "yolofarm/node_01/sensors/soil_moisture",
     "value": 40,
     "humidity": 40,
-    "timestamp": "2026-03-14T10:14:30.000Z",
+    "timestamp": "2026-03-14T10:14:30.945Z",
     "meta": {
       "farmId": "yolofarm",
       "nodeId": "node_01",
       "sourceType": "sensor",
       "sensor": "humidity"
+    }
+  },
+  {
+    "topic": "yolofarm/node_01/sensors/light",
+    "value": 600,
+    "light": 600,
+    "timestamp": "2026-03-14T10:14:30.963Z",
+    "meta": {
+      "farmId": "yolofarm",
+      "nodeId": "node_01",
+      "sourceType": "sensor",
+      "sensor": "light"
     }
   }
 ]
@@ -174,22 +187,103 @@ Thiết bị chạy theo 3 trạng thái:
 ### 5.3 System logs
 
 - **Method:** `GET`
-- **URL:** `/mqtt/system/logs`
+- **URL:** `/system/logs`
 
 **Query params**
 
-- `level`: một trong `debug`, `info`, `warn`, `error`.
+- `deviceId`: lọc theo thiết bị.
+- `eventType`: ví dụ `SENSOR_RECEIVED`, `CHAIN_STATE_CHANGED`, `SENSOR_STORED`, `FRONTEND_DISPLAYED`.
+- `traceId`: lọc theo trace để gom một luồng xử lý.
+- `from`: ISO datetime (lọc theo `occurredAt`).
+- `to`: ISO datetime (lọc theo `occurredAt`).
 - `limit`: mặc định `200`, tối đa `1000`.
+
+**Ví dụ**
+
+```text
+/system/logs?deviceId=node_01&limit=50
+/system/logs?deviceId=node_01&eventType=CHAIN_STATE_CHANGED&limit=50
+```
 
 **Response sample**
 
 ```json
 [
   {
-    "level": "warn",
-    "message": "Sensor payload missing numeric \"value\" field",
-    "topic": "yolofarm/node_01/sensors/soil_moisture",
-    "timestamp": "2026-03-14T10:14:30.000Z"
+    "_id": "69b532dde07a23c2b8be2fde",
+    "eventId": "8c3528b7-1056-4b81-b355-bdf032579889",
+    "traceId": "0c8feb18-42b3-4c38-97ab-21c3d264ee79",
+    "eventType": "SENSOR_RECEIVED",
+    "deviceId": "node_01",
+    "source": "EventChainingService.processSensorData",
+    "occurredAt": "2026-03-14T10:05:17.984Z",
+    "data": {
+      "humidity": 40,
+      "light": 600,
+      "deviceId": "node_01",
+      "topic": "yolofarm/node_01/sensors/light"
+    },
+    "createdAt": "2026-03-14T10:05:17.992Z"
+  }
+]
+```
+
+### 5.4 Event logs (state machine)
+
+- **Method:** `GET`
+- **URL:** `/event-logs`
+
+**Query params**
+
+- `deviceId`: lọc theo thiết bị.
+- `topic`: lọc theo MQTT topic.
+- `state`: một trong `MONITOR`, `WATERING`, `RECOVER`.
+- `action`: ví dụ `none`, `start_pump`, `stop_pump`.
+- `from`: ISO datetime.
+- `to`: ISO datetime.
+- `limit`: mặc định `200`, tối đa `1000`.
+
+**Ví dụ**
+
+```text
+/event-logs?deviceId=node_01&limit=20
+/event-logs?deviceId=node_01&state=WATERING&action=start_pump&limit=20
+```
+
+**Response sample**
+
+```json
+[
+  {
+    "_id": "69b532dee07a23c2b8be2fe3",
+    "deviceId": "node_01",
+    "topic": "yolofarm/node_01/sensors/light",
+    "humidity": 40,
+    "light": 600,
+    "state": "MONITOR",
+    "action": "none",
+    "timestamp": "2026-03-14T10:05:17.984Z",
+    "metadata": {
+      "traceId": "0c8feb18-42b3-4c38-97ab-21c3d264ee79",
+      "trigger": "sensor-data",
+      "topic": "yolofarm/node_01/sensors/light",
+      "durationSeconds": 0
+    },
+    "createdAt": "2026-03-14T10:05:18.136Z"
+  },
+  {
+    "_id": "69b532e6e07a23c2b8be3020",
+    "deviceId": "node_01",
+    "state": "RECOVER",
+    "action": "stop_pump",
+    "timestamp": "2026-03-14T10:05:26.581Z",
+    "metadata": {
+      "traceId": "3f31f740-8cd3-4739-9308-9a5699a56eac",
+      "trigger": "sensor-data/confirm",
+      "confirmation": "WATERING done",
+      "durationSeconds": 2
+    },
+    "createdAt": "2026-03-14T10:05:26.705Z"
   }
 ]
 ```
@@ -208,4 +302,5 @@ http://localhost:3000/api
 2. Realtime state: subscribe WebSocket `/events`, event `state_change`.
 3. Chart sensor: gọi `/mqtt/sensors/history` theo `nodeId`, `sensor`, `from`, `to`.
 4. Bảng trạng thái bơm: gọi `/mqtt/irrigation/status`.
-5. Debug panel: gọi `/mqtt/system/logs`.
+5. Debug panel: gọi `/system/logs`.
+6. Lịch sử state machine: gọi `/event-logs`.

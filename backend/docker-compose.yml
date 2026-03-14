@@ -1,11 +1,12 @@
 version: '3.8'
 
 services:
-  api:
+  api-yolofarm:
     container_name: nestjs_api
     build:
       context: .
       dockerfile: Dockerfile
+    image: onhangocnhu/yolofarm:${TAG:-latest}
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

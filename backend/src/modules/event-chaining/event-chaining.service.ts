@@ -11,6 +11,7 @@ import { connect, MqttClient } from 'mqtt';
 import { EventBusService } from '../event-bus/event-bus.service';
 import { ChainEventRecord } from '../event-bus/event-bus.types';
 import { SystemLogsService } from '../system-logs/system-logs.service';
+import { EventLogQueryDto } from './dto/event-log-query.dto';
 import {
   ChainState,
   DeviceState,
@@ -296,6 +297,46 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async getEventLogs(query: EventLogQueryDto): Promise<unknown[]> {
+    const filter: Record<string, unknown> = {};
+
+    if (query.deviceId) {
+      filter['deviceId'] = query.deviceId;
+    }
+
+    if (query.topic) {
+      filter['topic'] = query.topic;
+    }
+
+    if (query.state) {
+      filter['state'] = query.state;
+    }
+
+    if (query.action) {
+      filter['action'] = query.action;
+    }
+
+    if (query.from || query.to) {
+      const timestampFilter: { $gte?: Date; $lte?: Date } = {};
+
+      if (query.from) {
+        timestampFilter.$gte = new Date(query.from);
+      }
+
+      if (query.to) {
+        timestampFilter.$lte = new Date(query.to);
+      }
+
+      filter['timestamp'] = timestampFilter;
+    }
+
+    return this.eventLogModel
+      .find(filter)
+      .sort({ timestamp: -1 })
+      .limit(query.limit)
+      .lean()
+      .exec();
+  }
   private decideFromSensor(
     currentState: DeviceStateDocument,
     payload: SensorDataPayload,

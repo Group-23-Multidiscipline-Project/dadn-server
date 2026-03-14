@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { Model } from 'mongoose';
 import { ChainEventRecord } from '../event-bus/event-bus.types';
 import { SystemLog, SystemLogDocument } from '../../schemas/system-log.schema';
+import { SystemLogsQueryDto } from './dto/system-logs-query.dto';
 
 @Injectable()
 export class SystemLogsService {
@@ -24,5 +25,42 @@ export class SystemLogsService {
       occurredAt: record.occurredAt,
       data: payload.data,
     });
+  }
+
+  async getLogs(query: SystemLogsQueryDto): Promise<unknown[]> {
+    const filter: Record<string, unknown> = {};
+
+    if (query.deviceId) {
+      filter['deviceId'] = query.deviceId;
+    }
+
+    if (query.eventType) {
+      filter['eventType'] = query.eventType;
+    }
+
+    if (query.traceId) {
+      filter['traceId'] = query.traceId;
+    }
+
+    if (query.from || query.to) {
+      const occurredAtFilter: { $gte?: Date; $lte?: Date } = {};
+
+      if (query.from) {
+        occurredAtFilter.$gte = new Date(query.from);
+      }
+
+      if (query.to) {
+        occurredAtFilter.$lte = new Date(query.to);
+      }
+
+      filter['occurredAt'] = occurredAtFilter;
+    }
+
+    return this.systemLogModel
+      .find(filter)
+      .sort({ occurredAt: -1 })
+      .limit(query.limit)
+      .lean()
+      .exec();
   }
 }

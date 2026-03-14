@@ -18,6 +18,7 @@
  * 10. Device mới               : auto-create state MONITOR
  * 11. getDeviceState           : snapshot khi device chưa tồn tại
  * 12. getDeviceState           : snapshot khi đang WATERING
+ * 13. getEventLogs             : query filter + sort/limit
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -63,7 +64,7 @@ function makeLogDoc(overrides: Record<string, unknown> = {}): any {
 describe('EventChainingService', () => {
   let service: EventChainingService;
   let deviceStateModel: { findOne: jest.Mock; create: jest.Mock };
-  let eventLogModel: { create: jest.Mock; findOne: jest.Mock };
+  let eventLogModel: { create: jest.Mock; findOne: jest.Mock; find: jest.Mock };
   let gateway: { publishState: jest.Mock };
   let eventBus: { emit: jest.Mock; on: jest.Mock };
 
@@ -78,6 +79,15 @@ describe('EventChainingService', () => {
       findOne: jest
         .fn()
         .mockReturnValue({ sort: jest.fn().mockResolvedValue(null) }),
+      find: jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          limit: jest.fn().mockReturnValue({
+            lean: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      }),
     };
 
     gateway = { publishState: jest.fn() };
@@ -454,6 +464,41 @@ describe('EventChainingService', () => {
       expect(res.remainingSeconds).toBeGreaterThan(190);
       expect(res.wateringEndsAt).toBeTruthy();
       expect(res.latestEvent?.action).toBe('start_pump');
+    });
+  });
+
+  // ── 13. getEventLogs — query/filter lịch sử ───────────────────────────────
+  describe('13. getEventLogs — lấy lịch sử event_logs cho FE', () => {
+    it('apply filter + sort desc theo timestamp + limit', async () => {
+      const exec = jest.fn().mockResolvedValue([makeLogDoc()]);
+      const lean = jest.fn().mockReturnValue({ exec });
+      const limit = jest.fn().mockReturnValue({ lean });
+      const sort = jest.fn().mockReturnValue({ limit });
+      eventLogModel.find.mockReturnValue({ sort });
+
+      const res = await service.getEventLogs({
+        deviceId: 'node_01',
+        state: ChainState.WATERING,
+        action: 'start_pump',
+        from: '2026-03-14T10:00:00.000Z',
+        to: '2026-03-14T11:00:00.000Z',
+        limit: 50,
+      });
+
+      expect(eventLogModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deviceId: 'node_01',
+          state: ChainState.WATERING,
+          action: 'start_pump',
+          timestamp: {
+            $gte: new Date('2026-03-14T10:00:00.000Z'),
+            $lte: new Date('2026-03-14T11:00:00.000Z'),
+          },
+        }),
+      );
+      expect(sort).toHaveBeenCalledWith({ timestamp: -1 });
+      expect(limit).toHaveBeenCalledWith(50);
+      expect(res).toHaveLength(1);
     });
   });
 });

@@ -21,16 +21,11 @@ const RECOVER_DURATION_MS = 120_000;
 const CHAIN_EVENT_TYPES = [
   'SENSOR_RECEIVED',
   'SENSOR_STORED',
-  'THRESHOLD_RESOLVED',
-  'DECISION_COMPUTED',
-  'DECISION_LOG_CREATED',
-  'SIMULATION_STATE_UPDATED',
+  'CHAIN_STATE_CHANGED',
   'FRONTEND_DISPLAYED',
-  'DECISION_ACKNOWLEDGED',
   'ACTUATOR_COMMAND_ISSUED',
   'ACTUATOR_COMMAND_CONFIRMED',
   'ACTUATOR_COMMAND_FAILED',
-  'CHAIN_STATE_CHANGED',
 ] as const;
 
 interface SensorDataPayload {
@@ -138,18 +133,11 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       message: decision.message,
     };
 
-    this.emitChainEvent('DECISION_COMPUTED', {
+    this.emitChainEvent('CHAIN_STATE_CHANGED', {
       traceId,
       deviceId: payload.deviceId,
       source: 'EventChainingService.processSensorData',
       data: response,
-    });
-
-    this.emitChainEvent('SIMULATION_STATE_UPDATED', {
-      traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.processSensorData',
-      data: { state: persistedState.state, action: decision.action },
     });
 
     this.emitActuatorAndRealtimeEvents({
@@ -230,6 +218,56 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     });
 
     return response;
+  }
+
+  async getDeviceState(deviceId: string) {
+    const [stateDoc, latestLog] = await Promise.all([
+      this.deviceStateModel.findOne({ deviceId }),
+      this.eventLogModel.findOne({ deviceId }).sort({ timestamp: -1 }),
+    ]);
+
+    if (!stateDoc) {
+      return {
+        deviceId,
+        exists: false,
+        state: ChainState.MONITOR,
+        action: 'none',
+        remainingSeconds: 0,
+        stateStartedAt: null,
+        wateringEndsAt: null,
+        recoverEndsAt: null,
+        latestEvent: latestLog
+          ? {
+              state: latestLog.state,
+              action: latestLog.action,
+              timestamp: latestLog.timestamp.toISOString(),
+            }
+          : null,
+      };
+    }
+
+    const remainingSeconds = this.calculateRemainingSeconds(
+      stateDoc,
+      new Date(),
+    );
+
+    return {
+      deviceId: stateDoc.deviceId,
+      exists: true,
+      state: stateDoc.state,
+      action: latestLog?.action ?? 'none',
+      remainingSeconds,
+      stateStartedAt: stateDoc.stateStartedAt.toISOString(),
+      wateringEndsAt: stateDoc.wateringEndsAt?.toISOString() ?? null,
+      recoverEndsAt: stateDoc.recoverEndsAt?.toISOString() ?? null,
+      latestEvent: latestLog
+        ? {
+            state: latestLog.state,
+            action: latestLog.action,
+            timestamp: latestLog.timestamp.toISOString(),
+          }
+        : null,
+    };
   }
 
   private decideFromSensor(
@@ -435,12 +473,25 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private calculateRemainingSeconds(state: DeviceStateDocument, now: Date) {
+    if (state.state === ChainState.WATERING && state.wateringEndsAt) {
+      const diff = state.wateringEndsAt.getTime() - now.getTime();
+      return Math.max(0, Math.ceil(diff / 1000));
+    }
+
+    if (state.state === ChainState.RECOVER && state.recoverEndsAt) {
+      const diff = state.recoverEndsAt.getTime() - now.getTime();
+      return Math.max(0, Math.ceil(diff / 1000));
+    }
+
+    return 0;
+  }
+
   private emitChainEvent(
     eventType: string,
     payload: {
       traceId: string;
       deviceId?: string;
-      decisionLogId?: string;
       source: string;
       data?: Record<string, unknown>;
     },

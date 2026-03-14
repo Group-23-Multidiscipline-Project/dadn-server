@@ -20,7 +20,6 @@ export class SystemLogsService {
       traceId: payload.traceId,
       eventType: record.eventType,
       deviceId: payload.deviceId,
-      decisionLogId: payload.decisionLogId,
       source: payload.source,
       occurredAt: record.occurredAt,
       data: payload.data,

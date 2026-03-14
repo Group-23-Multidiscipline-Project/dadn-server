@@ -20,9 +20,6 @@ export class SystemLog {
   @Prop()
   deviceId?: string;
 
-  @Prop({ index: true })
-  decisionLogId?: string;
-
   @Prop()
   source?: string;
 

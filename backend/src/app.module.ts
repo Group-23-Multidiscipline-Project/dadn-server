@@ -4,7 +4,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from './modules/config/config.module';
 import { ConfigService } from './modules/config/config.service';
-import { DecisionModule } from './modules/decision/decision.module';
 import { EventChainingModule } from './modules/event-chaining/event-chaining.module';
 
 @Module({
@@ -21,7 +20,6 @@ import { EventChainingModule } from './modules/event-chaining/event-chaining.mod
         };
       },
     }),
-    DecisionModule,
     EventChainingModule,
   ],
   controllers: [AppController],

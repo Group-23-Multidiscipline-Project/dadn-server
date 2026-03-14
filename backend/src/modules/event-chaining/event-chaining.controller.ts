@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { EventChainingService } from './event-chaining.service';
 import { SensorDataDto } from './dto/sensor-data.dto';
 import { ConfirmWateringDto } from './dto/confirm-watering.dto';
@@ -17,5 +25,11 @@ export class EventChainingController {
   @HttpCode(HttpStatus.OK)
   async confirmWatering(@Body() dto: ConfirmWateringDto) {
     return this.eventChainingService.confirmWatering(dto);
+  }
+
+  @Get('event-chaining/state/:deviceId')
+  @HttpCode(HttpStatus.OK)
+  async getDeviceState(@Param('deviceId') deviceId: string) {
+    return this.eventChainingService.getDeviceState(deviceId);
   }
 }

@@ -1,7 +1,6 @@
 export interface ChainEventPayload {
   traceId: string;
   deviceId?: string;
-  decisionLogId?: string;
   source?: string;
   data?: Record<string, unknown>;
 }

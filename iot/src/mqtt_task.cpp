@@ -1,15 +1,19 @@
 #include "mqtt_task.h"
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <time.h>
 #include "globals.h"    
 #include "pump_relay.h" 
 
 // Cấu hình mạng
 const char* ssid = "TEN_WIFI_CUA_BAN";
 const char* password = "MAT_KHAU_WIFI";
-const char* mqtt_server = "192.168.1.6"; // IP của máy tính chạy backend
-const int mqtt_port = 1883;
+const char* mqtt_server = "370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud";
+const int mqtt_port = 8883;
+const char* mqtt_user = "admin";
+const char* mqtt_pass = "Yolofarm23";
 
 // Cấu hình topic
 const String NODE_ID = "node_01"; 
@@ -18,8 +22,18 @@ String air_topic = "yolofarm/" + NODE_ID + "/sensors/light";
 String control_topic = "yolofarm/" + NODE_ID + "/control/irrigation";
 String status_topic = "yolofarm/" + NODE_ID + "/status/irrigation";
 
-WiFiClient espClient;
+WiFiClientSecure espClient;
 PubSubClient client(espClient);
+
+static void syncTime() {
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  Serial.print("[NTP] Đang đồng bộ thời gian");
+  while (time(nullptr) < 8 * 3600 * 2) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println(" xong");
+}
 
 // Hàm callback được gọi mỗi khi có tin nhắn điều khiển từ Backend gửi xuống
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -52,12 +66,20 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void TaskMQTT(void *pvParameters) {
   // Kết nối wifi
   Serial.print("[WiFi] Đang kết nối...");
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     vTaskDelay(500 / portTICK_PERIOD_MS);
     Serial.print(".");
   }
   Serial.println("\n[WiFi] Đã kết nối!");
+
+  randomSeed(micros());
+  syncTime();
+
+  // Tạm thời bỏ qua kiểm tra CA để kết nối HiveMQ Cloud nhanh hơn.
+  // Với môi trường production, nên thay bằng espClient.setCACert(...).
+  espClient.setInsecure();
 
   // Cấu hình MQTT
   client.setServer(mqtt_server, mqtt_port);
@@ -73,12 +95,14 @@ void TaskMQTT(void *pvParameters) {
       Serial.println("[MQTT] Đang kết nối Broker...");
       String clientId = "YoloBit-" + String(random(0xffff), HEX);
       
-      if (client.connect(clientId.c_str())) {
+      if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
         Serial.println("[MQTT] Thành công!");
         // Đăng ký nhận lệnh từ Backend ngay khi kết nối thành công
         client.subscribe(control_topic.c_str()); 
       } else {
-        Serial.print("[MQTT] Thất bại, thử lại sau 5s...");
+        Serial.print("[MQTT] Thất bại, rc=");
+        Serial.print(client.state());
+        Serial.println(", thử lại sau 5s...");
         vTaskDelay(5000 / portTICK_PERIOD_MS); 
         continue; // Bỏ qua phần dưới để chạy lại vòng lặp connect
       }

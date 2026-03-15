@@ -19,7 +19,11 @@ export class ConfigService {
   }
 
   get mqtt() {
-    return this.get('MQTT_URL') ?? 'http://localhost:1883';
+    return {
+      mqttUrl: this.get('MQTT_URL') ?? 'http://localhost:1883',
+      hivemqUsername: this.get('HIVEMQ_USERNAME'),
+      hivemqPassword: this.get('HIVEMQ_PASSWORD'),
+    };
   }
 
   get databaseConfig() {

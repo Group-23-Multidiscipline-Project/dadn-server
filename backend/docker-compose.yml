@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   api-yolofarm:
-    container_name: nestjs_api
+    container_name: yolofarm_api
     build:
       context: .
       dockerfile: Dockerfile

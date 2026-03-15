@@ -44,6 +44,9 @@ importers:
       joi:
         specifier: ^18.0.2
         version: 18.0.2
+      mongoose:
+        specifier: ^9.3.0
+        version: 9.3.0(socks@2.8.7)
       mqtt:
         specifier: ^5.15.0
         version: 5.15.0

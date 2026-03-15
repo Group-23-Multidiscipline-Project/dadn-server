@@ -1,13 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { MqttOptions } from '@nestjs/microservices';
+import { MqttOptions, Transport } from '@nestjs/microservices';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 const mqttOptions: MqttOptions = {
-  transport: 3,
+  transport: Transport.MQTT,
   options: {
     url: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
+    username: process.env.HIVEMQ_USERNAME ?? 'admin',
+    password: process.env.HIVEMQ_PASSWORD,
     subscribeOptions: {
       qos: 1,
     },

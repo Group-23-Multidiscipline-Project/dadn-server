@@ -3,11 +3,14 @@ import { AppModule } from './app.module';
 import { MqttOptions, Transport } from '@nestjs/microservices';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import 'dotenv/config';
 
 const mqttOptions: MqttOptions = {
   transport: Transport.MQTT,
   options: {
-    url: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
+    host: process.env.MQTT_HOST,
+    port: Number(process.env.MQTT_PORT ?? 8883),
+    protocol: 'mqtts',
     username: process.env.HIVEMQ_USERNAME ?? 'admin',
     password: process.env.HIVEMQ_PASSWORD,
     subscribeOptions: {

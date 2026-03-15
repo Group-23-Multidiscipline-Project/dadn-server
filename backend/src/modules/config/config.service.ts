@@ -15,14 +15,15 @@ export class ConfigService {
   }
 
   get port() {
-    return this.get('PORT') ?? '3000';
+    return this.get('PORT') ?? 3000;
   }
 
   get mqtt() {
     return {
-      mqttUrl: this.get('MQTT_URL') ?? 'http://localhost:1883',
-      hivemqUsername: this.get('HIVEMQ_USERNAME'),
-      hivemqPassword: this.get('HIVEMQ_PASSWORD'),
+      mqttHost: this.get('MQTT_HOST') ?? 'localhost',
+      mqttPort: this.get('MQTT_PORT') ?? 8883,
+      hivemqUsername: this.get('HIVEMQ_USERNAME') ?? '',
+      hivemqPassword: this.get('HIVEMQ_PASSWORD') ?? '',
     };
   }
 

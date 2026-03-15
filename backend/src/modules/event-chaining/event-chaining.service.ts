@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'crypto';
 import { Model } from 'mongoose';
-import { connect, MqttClient } from 'mqtt';
+import { connect, IClientOptions, MqttClient } from 'mqtt';
 import { EventBusService } from '../event-bus/event-bus.service';
 import { ChainEventRecord } from '../event-bus/event-bus.types';
 import { SystemLogsService } from '../system-logs/system-logs.service';
@@ -19,6 +19,7 @@ import {
 } from '../../schemas/device-state.schema';
 import { EventLog, EventLogDocument } from '../../schemas/event-log.schema';
 import { EventChainingGateway } from './event-chaining.gateway';
+import { ConfigService } from '../config/config.service';
 
 const MONITOR_HUMIDITY_THRESHOLD = 20;
 const MONITOR_LIGHT_THRESHOLD = 500;
@@ -59,7 +60,6 @@ interface ChainDecisionResult {
 @Injectable()
 export class EventChainingService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventChainingService.name);
-  private readonly mqttUrl = process.env.MQTT_URL ?? 'mqtt://localhost:1883';
   private readonly mqttTopicBase = process.env.MQTT_TOPIC_BASE ?? 'yolofarm';
   private readonly mqttCommandQos = this.resolveMqttQos(
     process.env.MQTT_COMMAND_QOS,
@@ -71,6 +71,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     private readonly eventBusService: EventBusService,
     private readonly systemLogsService: SystemLogsService,
     private readonly eventChainingGateway: EventChainingGateway,
+    private readonly configService: ConfigService,
 
     @InjectModel(DeviceState.name)
     private readonly deviceStateModel: Model<DeviceStateDocument>,
@@ -573,11 +574,19 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.mqttCommandClient = connect(this.mqttUrl);
+    const mqttOptions: IClientOptions = {
+      host: this.configService.mqtt.mqttHost,
+      port: this.configService.mqtt.mqttPort,
+      protocol: 'mqtts',
+      username: this.configService.mqtt.hivemqUsername,
+      password: this.configService.mqtt.hivemqPassword,
+    };
+
+    this.mqttCommandClient = connect(mqttOptions);
 
     this.mqttCommandClient.on('connect', () => {
       this.logger.log(
-        `MQTT actuator publisher connected (${this.mqttUrl}) qos=${this.mqttCommandQos}`,
+        `MQTT actuator publisher connected (Host ${this.configService.mqtt.mqttHost}) qos=${this.mqttCommandQos}`,
       );
     });
 

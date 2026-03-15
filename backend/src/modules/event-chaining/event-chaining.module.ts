@@ -10,9 +10,11 @@ import { EventLog, EventLogSchema } from '../../schemas/event-log.schema';
 import { EventChainingService } from './event-chaining.service';
 import { EventChainingController } from './event-chaining.controller';
 import { EventChainingGateway } from './event-chaining.gateway';
+import { ConfigModule } from '../config/config.module';
 
 @Module({
   imports: [
+    ConfigModule,
     EventBusModule,
     SystemLogsModule,
     MongooseModule.forFeature([

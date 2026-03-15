@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api-yolofarm:
     container_name: yolofarm_api

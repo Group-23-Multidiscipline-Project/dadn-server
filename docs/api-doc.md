@@ -109,8 +109,6 @@ Thiết bị chạy theo 3 trạng thái:
 
 - `nodeId`: lọc theo node.
 - `sensor`: lọc theo sensor key (`soil_moisture` cho dữ liệu `humidity`, hoặc `light`).
-- `from`: ISO datetime.
-- `to`: ISO datetime.
 - `limit`: mặc định `200`, tối đa `1000`.
 
 **Ví dụ**
@@ -194,8 +192,6 @@ Thiết bị chạy theo 3 trạng thái:
 - `deviceId`: lọc theo thiết bị.
 - `eventType`: ví dụ `SENSOR_RECEIVED`, `CHAIN_STATE_CHANGED`, `SENSOR_STORED`, `FRONTEND_DISPLAYED`.
 - `traceId`: lọc theo trace để gom một luồng xử lý.
-- `from`: ISO datetime (lọc theo `occurredAt`).
-- `to`: ISO datetime (lọc theo `occurredAt`).
 - `limit`: mặc định `200`, tối đa `1000`.
 
 **Ví dụ**
@@ -239,8 +235,6 @@ Thiết bị chạy theo 3 trạng thái:
 - `topic`: lọc theo MQTT topic.
 - `state`: một trong `MONITOR`, `WATERING`, `RECOVER`.
 - `action`: ví dụ `none`, `start_pump`, `stop_pump`.
-- `from`: ISO datetime.
-- `to`: ISO datetime.
 - `limit`: mặc định `200`, tối đa `1000`.
 
 **Ví dụ**
@@ -300,7 +294,7 @@ http://localhost:3000/api
 
 1. Initial load: gọi `GET /state/:deviceId`.
 2. Realtime state: subscribe WebSocket `/events`, event `state_change`.
-3. Chart sensor: gọi `/mqtt/sensors/history` theo `nodeId`, `sensor`, `from`, `to`.
+3. Chart sensor: gọi `/mqtt/sensors/history` theo `nodeId`, `sensor`.
 4. Bảng trạng thái bơm: gọi `/mqtt/irrigation/status`.
 5. Debug panel: gọi `/system/logs`.
 6. Lịch sử state machine: gọi `/event-logs`.

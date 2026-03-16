@@ -18,11 +18,7 @@ const char* mqtt_pass = "Yolofarm23";
 // Cấu hình topic
 const String NODE_ID = "node_01"; 
 String soil_topic = "yolofarm/" + NODE_ID + "/sensors/soil_moisture";
-<<<<<<< HEAD
 String light_topic = "yolofarm/" + NODE_ID + "/sensors/light";
-=======
-String air_topic = "yolofarm/" + NODE_ID + "/sensors/light";
->>>>>>> 21916baf092ddfa3a83a025abd56c0e8bb9830b7
 String control_topic = "yolofarm/" + NODE_ID + "/control/irrigation";
 String status_topic = "yolofarm/" + NODE_ID + "/status/irrigation";
 
@@ -131,11 +127,7 @@ void TaskMQTT(void *pvParameters) {
       docLight["value"] = currentLightLevel;
       char bufferLight[100];
       serializeJson(docLight, bufferLight);
-<<<<<<< HEAD
       client.publish(light_topic.c_str(), bufferLight);
-=======
-      client.publish(air_topic.c_str(), bufferLight);
->>>>>>> 21916baf092ddfa3a83a025abd56c0e8bb9830b7
       
       Serial.printf("[MQTT] Publish -> Soil: %.1f%% | Light: %.1f%%\n", currentSoilMoisture, currentLightLevel);
     }

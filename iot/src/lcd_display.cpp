@@ -5,7 +5,7 @@
 
 // Khởi tạo đối tượng LCD. Địa chỉ I2C phổ biến nhất của module chuyển đổi là 0x27.
 // Kích thước màn hình: 16 cột, 2 dòng.
-LiquidCrystal_I2C lcd(0x27, 16, 2); 
+LiquidCrystal_I2C lcd(0x21, 16, 2); 
 
 void lcd_init() {
   lcd.init();

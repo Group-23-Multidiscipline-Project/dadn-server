@@ -1,7 +1,9 @@
+#include <Arduino.h>
 #include "dht20_sensor.h"
 #include <Wire.h>
 #include <DHT20.h>
 #include "globals.h" 
+
 
 DHT20 dht;
 

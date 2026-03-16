@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "lcd_display.h"
 #include <LiquidCrystal_I2C.h>
 #include "globals.h"

@@ -22,7 +22,7 @@ import { EventChainingGateway } from './event-chaining.gateway';
 import { ConfigService } from '../config/config.service';
 
 const MONITOR_HUMIDITY_THRESHOLD = 20;
-const MONITOR_LIGHT_THRESHOLD = 500;
+const MONITOR_LIGHT_THRESHOLD = 8;
 const WATERING_DURATION_MS = 300_000;
 // const WATERING_DURATION_MS = 5000;
 const RECOVER_DURATION_MS = 120_000;

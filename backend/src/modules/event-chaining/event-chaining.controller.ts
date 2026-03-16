@@ -63,7 +63,11 @@ export class EventChainingController {
   @ApiOperation({ summary: 'Get event logs history' })
   @ApiQuery({ name: 'deviceId', required: false, type: String })
   @ApiQuery({ name: 'topic', required: false, type: String })
-  @ApiQuery({ name: 'state', required: false, enum: ['MONITOR', 'WATERING', 'RECOVER'] })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    enum: ['MONITOR', 'WATERING', 'RECOVER'],
+  })
   @ApiQuery({ name: 'action', required: false, type: String })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
   async getEventLogs(@Query() query: EventLogQueryDto) {

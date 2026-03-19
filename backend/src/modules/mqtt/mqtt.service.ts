@@ -66,7 +66,7 @@ export class MqttService {
     await this.routeIncomingTopic(topic, payload);
   }
 
-  async getSensorHistory(query: SensorHistoryQueryDto): Promise<unknown[]> {
+  async getSensorHistory(query: SensorHistoryQueryDto) {
     const filter: Record<string, unknown> = {};
 
     if (query.nodeId) {
@@ -94,7 +94,7 @@ export class MqttService {
     );
   }
 
-  async getIrrigationStatus(query: IrrigationStatusQueryDto): Promise<unknown> {
+  async getIrrigationStatus(query: IrrigationStatusQueryDto) {
     if (query.nodeId) {
       return this.irrigationEventModel
         .findOne({ nodeId: query.nodeId })
@@ -114,8 +114,8 @@ export class MqttService {
       .exec();
   }
 
-  async getSystemLogs(query: SystemLogQueryDto): Promise<unknown[]> {
-    const filter: Record<string, unknown> = {};
+  async getSystemLogs(query: SystemLogQueryDto) {
+    const filter = {};
 
     if (query.level) {
       filter['level'] = query.level;
@@ -303,10 +303,7 @@ export class MqttService {
       nodeId,
       direction,
       action: coerceString(normalizedPayload.action),
-      status:
-        coerceString(normalizedPayload.status) ??
-        coerceString(normalizedPayload.pumpStatus) ??
-        coerceString(normalizedPayload.pump_status),
+      status: coerceString(normalizedPayload.status),
       reason: coerceString(normalizedPayload.reason),
       shouldIrrigate,
       durationSeconds: durationSeconds >= 0 ? durationSeconds : 0,

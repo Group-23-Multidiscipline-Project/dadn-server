@@ -31,7 +31,7 @@ export class EventChainingController {
     summary: 'Push sensor data',
     description:
       'Nhận dữ liệu cảm biến (humidity, light) và chạy state machine.\n\n' +
-      'MONITOR → WATERING khi humidity < 20 **và** light > 500.\n' +
+      'MONITOR → WATERING khi humidity < 20% **và** light > 500.\n' +
       'WATERING → RECOVER sau 5 phút (300 s).\n' +
       'RECOVER → MONITOR sau 2 phút (120 s).',
   })
@@ -53,7 +53,7 @@ export class EventChainingController {
   @Get('state/:deviceId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get current device state snapshot' })
-  @ApiParam({ name: 'deviceId', example: 'device_01' })
+  @ApiParam({ name: 'deviceId', example: 'node_01' })
   async getDeviceState(@Param('deviceId') deviceId: string) {
     return this.eventChainingService.getDeviceState(deviceId);
   }

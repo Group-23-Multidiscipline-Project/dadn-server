@@ -2,8 +2,6 @@
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
 
   <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
     <p align="center">
@@ -31,12 +29,13 @@ Before you begin, ensure you have the following installed on your system:
 
 - **Node.js** (v24)
 - **pnpm** (v8.0.0 or higher) - Package manager
+
   ```bash
   npm install -g pnpm
   ```
+
 - **Git** - Version control
 - **Docker** (optional)
-
 
 ### 1. Install Dependencies
 
@@ -49,7 +48,6 @@ This will install all project dependencies using the lockfile (`pnpm-lock.yaml`)
 ### 2. Environment Configuration
 
 Create a `.env` file in the project root with necessary environment variables (see `.env.example` if available).
-
 
 ## Compile and run the project
 
@@ -65,6 +63,7 @@ $ pnpm run start:prod
 ```
 
 ## Run in Docker (recommended)
+
 ```bash
 docker compose up -d
 ```
@@ -102,6 +101,7 @@ git checkout -b hotfix/your-hotfix-name
 ```
 
 Always fetch the latest changes:
+
 ```bash
 git fetch -a
 ```

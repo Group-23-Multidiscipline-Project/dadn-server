@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
-type EventChainingSensorKey = 'humidity' | 'light';
+type EventChainingSensorKey = 'moisture' | 'light' | 'humidity' | 'temperature';
 
 @Injectable()
 export class MqttSensorPayloadAdapterService {
   private readonly sensorAliasMap = new Map<string, EventChainingSensorKey>([
-    ['humidity', 'humidity'],
-    ['soil_moisture', 'humidity'],
-    ['soil-moisture', 'humidity'],
-    ['moisture', 'humidity'],
+    ['air_humidity', 'humidity'],
+    ['soil_moisture', 'moisture'],
     ['light', 'light'],
+    ['temperature', 'temperature'],
     ['light_intensity', 'light'],
     ['light-intensity', 'light'],
     ['lux', 'light'],
@@ -30,7 +29,7 @@ export class MqttSensorPayloadAdapterService {
 
   getEventChainingSensorKey(sensor: string): EventChainingSensorKey | null {
     const normalizedSensor = this.normalizeSensorKey(sensor);
-    if (normalizedSensor === 'humidity' || normalizedSensor === 'light') {
+    if (normalizedSensor === 'moisture' || normalizedSensor === 'light') {
       return normalizedSensor;
     }
 

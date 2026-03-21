@@ -16,7 +16,7 @@ export class EventLog {
   topic?: string;
 
   @Prop({ type: Number, min: 0, max: 100 })
-  humidity?: number;
+  moisture?: number;
 
   @Prop({ type: Number, min: 0 })
   light?: number;

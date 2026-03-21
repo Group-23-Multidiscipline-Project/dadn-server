@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, LOG_LEVELS, Query } from '@nestjs/common';
 import {
   Ctx,
   MessagePattern,
@@ -28,7 +28,7 @@ export class MqttController {
   @ApiOperation({ summary: 'Get sensor history' })
   @ApiQuery({ name: 'nodeId', required: false, type: String })
   @ApiQuery({ name: 'sensor', required: false, type: String })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   getSensorHistory(@Query() query: SensorHistoryQueryDto) {
     return this.mqttService.getSensorHistory(query);
   }
@@ -36,7 +36,7 @@ export class MqttController {
   @Get('irrigation/status')
   @ApiOperation({ summary: 'Get irrigation status' })
   @ApiQuery({ name: 'nodeId', required: false, type: String })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 100 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   getIrrigationStatus(@Query() query: IrrigationStatusQueryDto) {
     return this.mqttService.getIrrigationStatus(query);
   }
@@ -46,9 +46,9 @@ export class MqttController {
   @ApiQuery({
     name: 'level',
     required: false,
-    enum: ['debug', 'info', 'warn', 'error'],
+    enum: LOG_LEVELS,
   })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 200 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   getSystemLogs(@Query() query: SystemLogQueryDto) {
     return this.mqttService.getSystemLogs(query);
   }

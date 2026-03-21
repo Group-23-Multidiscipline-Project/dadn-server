@@ -15,16 +15,14 @@ The backend stays in `MONITOR` state and does not publish any command.
 
 Open Terminal 2 and publish:
 
-**Send soil moisture (40%)**
-
 ```bash
+# Send soil moisture (40%)
+
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 40}'
-```
 
-**Send light (7%)**
+# Send light (500)
 
-```bash
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 80}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 500}'
 ```
 
 **Expected result in Terminal 1:** No message appears.
@@ -38,30 +36,21 @@ The backend transitions to `WATERING` and sends a pump-on command.
 
 In Terminal 2, publish:
 
-**Send soil moisture (10%)**
-
 ```bash
+
+# Send soil moisture (10%)
+
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 10}'
-```
 
-**Send light (9%)**
+# Send light (600)
 
-```bash
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 9}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 600}'
 ```
 
 **Expected result in Terminal 1:**  
 You receive a pump-on command from backend:
 
 `yolofarm/node_01/control/irrigation {"traceId":"...","action":"start_pump","status":"pending_on","shouldIrrigate":true,"durationSeconds":300,...}`
-
-Device sends ACK (pump turned on successfully):
-
-```bash
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/status/irrigation" -m '{"action": "start_pump", "status": "pump_on"}'
-```
-
----
 
 ## 3. Case 3: Irrigation In Progress
 
@@ -70,16 +59,14 @@ The device keeps sending sensor data periodically, but backend ignores it and se
 
 In Terminal 2, publish:
 
-**Soil moisture increases slightly to 12%**
-
 ```bash
+# Soil moisture increases slightly to 12%
+
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 12}'
-```
 
-**Light remains the same**
+# Light remains the same
 
-```bash
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 9}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 600}'
 ```
 
 **Expected result in Terminal 1:** No additional command is sent.
@@ -95,12 +82,16 @@ The device sends sensor ticks so backend detects timeout, sends pump-off command
 
 In Terminal 2, publish:
 
-**Soil is now wetter (30%)**
+```bash
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/confirm" -m '{"value": "WATERING done"}'
+```
 
 ```bash
+# Soil is now wetter (30%)
+
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 30}'
 
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 9}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 500}'
 ```
 
 **Expected result in Terminal 1:**  

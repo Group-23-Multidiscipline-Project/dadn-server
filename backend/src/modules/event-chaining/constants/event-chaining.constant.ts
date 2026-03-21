@@ -1,0 +1,16 @@
+import ms from 'ms';
+
+export const CHAIN_EVENT_TYPES = [
+  'SENSOR_RECEIVED',
+  'SENSOR_STORED',
+  'CHAIN_STATE_CHANGED',
+  'FRONTEND_DISPLAYED',
+  'ACTUATOR_COMMAND_ISSUED',
+  'ACTUATOR_COMMAND_CONFIRMED',
+  'ACTUATOR_COMMAND_FAILED',
+] as const;
+
+export const MONITOR_MOISTURE_THRESHOLD = 20;
+export const MONITOR_LIGHT_THRESHOLD = 500; // lux
+export const WATERING_DURATION_MS = ms('20s');
+export const RECOVER_DURATION_MS = ms('20s');

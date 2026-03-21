@@ -20,42 +20,18 @@ import {
 import { EventLog, EventLogDocument } from '../../schemas/event-log.schema';
 import { EventChainingGateway } from './event-chaining.gateway';
 import { ConfigService } from '../config/config.service';
-
-const MONITOR_HUMIDITY_THRESHOLD = 20;
-const MONITOR_LIGHT_THRESHOLD = 8;
-const WATERING_DURATION_MS = 300_000;
-// const WATERING_DURATION_MS = 5000;
-const RECOVER_DURATION_MS = 120_000;
-// const RECOVER_DURATION_MS = 2000;
-
-const CHAIN_EVENT_TYPES = [
-  'SENSOR_RECEIVED',
-  'SENSOR_STORED',
-  'CHAIN_STATE_CHANGED',
-  'FRONTEND_DISPLAYED',
-  'ACTUATOR_COMMAND_ISSUED',
-  'ACTUATOR_COMMAND_CONFIRMED',
-  'ACTUATOR_COMMAND_FAILED',
-] as const;
-
-interface SensorDataPayload {
-  deviceId: string;
-  topic?: string;
-  humidity: number;
-  light: number;
-}
-
-interface ConfirmWateringPayload {
-  deviceId: string;
-  state?: string;
-}
-
-interface ChainDecisionResult {
-  state: ChainState;
-  action: string;
-  durationSeconds: number;
-  message: string;
-}
+import {
+  CHAIN_EVENT_TYPES,
+  MONITOR_LIGHT_THRESHOLD,
+  MONITOR_MOISTURE_THRESHOLD,
+  RECOVER_DURATION_MS,
+  WATERING_DURATION_MS,
+} from './constants/event-chaining.constant';
+import {
+  ChainDecisionResult,
+  ConfirmWateringPayload,
+  SensorDataPayload,
+} from './interfaces/event-chaining.interface';
 
 @Injectable()
 export class EventChainingService implements OnModuleInit, OnModuleDestroy {
@@ -86,8 +62,8 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     CHAIN_EVENT_TYPES.forEach((eventType) => {
       const unregister = this.eventBusService.on(
         eventType,
-        async (record: ChainEventRecord) => {
-          await this.systemLogsService.appendEvent(record);
+        (record: ChainEventRecord) => {
+          this.systemLogsService.appendEvent(record);
         },
       );
       this.unregisterHandlers.push(unregister);
@@ -105,95 +81,71 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processSensorData(payload: SensorDataPayload) {
-    const traceId = randomUUID();
-    const now = new Date();
-
-    this.emitChainEvent('SENSOR_RECEIVED', {
-      traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.processSensorData',
-      data: {
-        humidity: payload.humidity,
+    return this.runChainingPipeline(
+      payload.deviceId,
+      'EventChainingService.processSensorData',
+      {
+        moisture: payload.moisture,
         light: payload.light,
         deviceId: payload.deviceId,
         topic: payload.topic,
       },
-    });
-
-    const currentState = await this.getOrCreateState(payload.deviceId, now);
-    const decision = this.decideFromSensor(currentState, payload, now);
-
-    const persistedState = await this.persistState(
-      currentState,
-      decision.state,
-      now,
-    );
-
-    const log = await this.eventLogModel.create({
-      deviceId: payload.deviceId,
-      topic: payload.topic,
-      humidity: payload.humidity,
-      light: payload.light,
-      state: persistedState.state,
-      action: decision.action,
-      timestamp: now,
-      metadata: {
-        traceId,
-        trigger: 'sensor-data',
+      (state, now) => this.decideFromSensor(state, payload, now),
+      (_, decision, traceId) => ({
         topic: payload.topic,
-        durationSeconds: decision.durationSeconds,
-      },
-    });
-
-    this.emitChainEvent('SENSOR_STORED', {
-      traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.processSensorData',
-      data: { eventLogId: log._id.toString() },
-    });
-
-    const response = {
-      deviceId: payload.deviceId,
-      state: persistedState.state,
-      action: decision.action,
-      duration: decision.durationSeconds,
-      timestamp: now.toISOString(),
-      message: decision.message,
-    };
-
-    this.emitChainEvent('CHAIN_STATE_CHANGED', {
-      traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.processSensorData',
-      data: response,
-    });
-
-    this.emitActuatorAndRealtimeEvents({
-      traceId,
-      deviceId: payload.deviceId,
-      state: persistedState.state,
-      action: decision.action,
-      durationSeconds: decision.durationSeconds,
-      now,
-    });
-
-    return response;
+        moisture: payload.moisture,
+        light: payload.light,
+        metadata: {
+          traceId,
+          trigger: 'sensor-data',
+          topic: payload.topic,
+          durationSeconds: decision.durationSeconds,
+        },
+      }),
+    );
   }
 
   async confirmWatering(payload: ConfirmWateringPayload) {
+    return this.runChainingPipeline(
+      payload.deviceId,
+      'EventChainingService.confirmWatering',
+      { confirmation: payload.state ?? 'WATERING done' },
+      (state) => this.decideFromConfirm(state),
+      (_, decision, traceId) => ({
+        metadata: {
+          traceId,
+          trigger: 'device/confirm',
+          confirmation: payload.state,
+          durationSeconds: decision.durationSeconds,
+        },
+      }),
+    );
+  }
+
+  private async runChainingPipeline(
+    deviceId: string,
+    source: string,
+    triggerData: Record<string, unknown>,
+    decideFn: (state: DeviceStateDocument, now: Date) => ChainDecisionResult,
+    buildLogPayload: (
+      state: ChainState,
+      decision: ChainDecisionResult,
+      traceId: string,
+      now: Date,
+    ) => Partial<EventLog>,
+  ) {
     const traceId = randomUUID();
     const now = new Date();
 
     this.emitChainEvent('SENSOR_RECEIVED', {
       traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.confirmWatering',
-      data: { confirmation: payload.state ?? 'WATERING done' },
+      deviceId,
+      source,
+      data: triggerData,
     });
 
-    const currentState = await this.getOrCreateState(payload.deviceId, now);
-    const decision = this.decideFromConfirm(currentState, now);
-
+    const currentState = await this.getOrCreateState(deviceId, now);
+    const decision = decideFn(currentState, now);
     const persistedState = await this.persistState(
       currentState,
       decision.state,
@@ -201,27 +153,22 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     );
 
     const log = await this.eventLogModel.create({
-      deviceId: payload.deviceId,
+      deviceId,
       state: persistedState.state,
       action: decision.action,
       timestamp: now,
-      metadata: {
-        traceId,
-        trigger: 'sensor-data/confirm',
-        confirmation: payload.state,
-        durationSeconds: decision.durationSeconds,
-      },
+      ...buildLogPayload(persistedState.state, decision, traceId, now),
     });
 
     this.emitChainEvent('SENSOR_STORED', {
       traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.confirmWatering',
+      deviceId,
+      source,
       data: { eventLogId: log._id.toString() },
     });
 
     const response = {
-      deviceId: payload.deviceId,
+      deviceId,
       state: persistedState.state,
       action: decision.action,
       duration: decision.durationSeconds,
@@ -231,14 +178,14 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
 
     this.emitChainEvent('CHAIN_STATE_CHANGED', {
       traceId,
-      deviceId: payload.deviceId,
-      source: 'EventChainingService.confirmWatering',
+      deviceId,
+      source,
       data: response,
     });
 
     this.emitActuatorAndRealtimeEvents({
       traceId,
-      deviceId: payload.deviceId,
+      deviceId,
       state: persistedState.state,
       action: decision.action,
       durationSeconds: decision.durationSeconds,
@@ -376,7 +323,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (
-      payload.humidity < MONITOR_HUMIDITY_THRESHOLD &&
+      payload.moisture < MONITOR_MOISTURE_THRESHOLD &&
       payload.light > MONITOR_LIGHT_THRESHOLD
     ) {
       return {
@@ -397,7 +344,6 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
 
   private decideFromConfirm(
     currentState: DeviceStateDocument,
-    now: Date,
   ): ChainDecisionResult {
     if (currentState.state !== ChainState.WATERING) {
       return {
@@ -408,25 +354,11 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    const wateringEndsAt =
-      currentState.wateringEndsAt ??
-      new Date(currentState.stateStartedAt.getTime() + WATERING_DURATION_MS);
-    const remainingMs = wateringEndsAt.getTime() - now.getTime();
-
-    if (remainingMs > 0) {
-      return {
-        state: ChainState.WATERING,
-        action: 'none',
-        durationSeconds: Math.ceil(remainingMs / 1000),
-        message: 'WATERING chưa đủ 5 phút, tiếp tục chờ.',
-      };
-    }
-
     return {
       state: ChainState.RECOVER,
-      action: 'stop_pump',
+      action: 'none',
       durationSeconds: RECOVER_DURATION_MS / 1000,
-      message: 'Xác nhận WATERING hoàn tất, chuyển sang RECOVER.',
+      message: 'Thiết bị xác nhận đã tưới xong, chuyển sang RECOVER.',
     };
   }
 
@@ -481,13 +413,18 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
     durationSeconds: number;
     now: Date;
   }) {
-    if (input.action === 'start_pump') {
-      this.emitChainEvent('ACTUATOR_COMMAND_ISSUED', {
+    if (input.action === 'start_pump' || input.action === 'stop_pump') {
+      const eventType =
+        input.action === 'start_pump'
+          ? 'ACTUATOR_COMMAND_ISSUED'
+          : 'ACTUATOR_COMMAND_CONFIRMED';
+
+      this.emitChainEvent(eventType, {
         traceId: input.traceId,
         deviceId: input.deviceId,
         source: 'EventChainingService.emitActuatorAndRealtimeEvents',
         data: {
-          command: 'start_pump',
+          command: input.action,
           state: input.state,
           durationSeconds: input.durationSeconds,
         },
@@ -496,33 +433,13 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       this.publishActuatorCommand({
         traceId: input.traceId,
         deviceId: input.deviceId,
-        action: 'start_pump',
+        action: input.action,
         durationSeconds: input.durationSeconds,
         now: input.now,
       });
     }
 
-    if (input.action === 'stop_pump') {
-      this.emitChainEvent('ACTUATOR_COMMAND_CONFIRMED', {
-        traceId: input.traceId,
-        deviceId: input.deviceId,
-        source: 'EventChainingService.emitActuatorAndRealtimeEvents',
-        data: {
-          command: 'stop_pump',
-          state: input.state,
-          durationSeconds: input.durationSeconds,
-        },
-      });
-
-      this.publishActuatorCommand({
-        traceId: input.traceId,
-        deviceId: input.deviceId,
-        action: 'stop_pump',
-        durationSeconds: input.durationSeconds,
-        now: input.now,
-      });
-    }
-
+    // Cập nhật trạng thái realtime qua WebSockets cho Frontend
     this.eventChainingGateway.publishState({
       deviceId: input.deviceId,
       state: input.state,
@@ -531,6 +448,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       timestamp: input.now.toISOString(),
     });
 
+    // Ghi log xác nhận đã đẩy dữ liệu lên Frontend
     this.emitChainEvent('FRONTEND_DISPLAYED', {
       traceId: input.traceId,
       deviceId: input.deviceId,

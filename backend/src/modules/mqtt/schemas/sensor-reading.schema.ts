@@ -37,7 +37,7 @@ export class SensorReading {
   value: number;
 
   @Prop({ type: Number })
-  humidity?: number;
+  moisture?: number;
 
   @Prop({ type: Number })
   light?: number;

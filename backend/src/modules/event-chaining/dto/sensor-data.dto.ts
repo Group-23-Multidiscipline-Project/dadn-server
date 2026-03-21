@@ -2,7 +2,7 @@ import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SensorDataDto {
-  @ApiProperty({ example: 'device_01', description: 'ID định danh thiết bị' })
+  @ApiProperty({ example: 'node_01', description: 'ID định danh thiết bị' })
   @IsString()
   deviceId: string;
 
@@ -23,7 +23,7 @@ export class SensorDataDto {
   @IsNumber()
   @Min(0)
   @Max(100)
-  humidity: number;
+  moisture: number;
 
   @ApiProperty({
     example: 600,

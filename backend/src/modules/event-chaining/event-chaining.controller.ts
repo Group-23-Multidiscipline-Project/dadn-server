@@ -30,8 +30,8 @@ export class EventChainingController {
   @ApiOperation({
     summary: 'Push sensor data',
     description:
-      'Nhận dữ liệu cảm biến (humidity, light) và chạy state machine.\n\n' +
-      'MONITOR → WATERING khi humidity < 20% **và** light > 500.\n' +
+      'Nhận dữ liệu cảm biến (moisture, light) và chạy state machine.\n\n' +
+      'MONITOR → WATERING khi moisture < 20% **và** light > 500.\n' +
       'WATERING → RECOVER sau 5 phút (300 s).\n' +
       'RECOVER → MONITOR sau 2 phút (120 s).',
   })

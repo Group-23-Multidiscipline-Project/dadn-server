@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, LogLevel } from '@nestjs/common';
 import { MqttContext } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -22,19 +22,23 @@ import {
   normalizePayload,
   resolveTimestamp,
 } from 'src/shared/utils/helpers';
-import { LogLevel } from './types/log-level.type';
 import { MqttSensorPayloadAdapterService } from './mqtt-sensor-payload-adapter.service';
+import { IrrigationPayloadDto } from './dto/irrigation.dto';
+import { ConfirmPayloadDto } from './dto/confirm-watered.dto';
 
 @Injectable()
 export class MqttService {
   private readonly logger = new Logger(MqttService.name);
+
   private readonly sensorTopicRegex = /^yolofarm\/([^/]+)\/sensors\/([^/]+)$/;
+  private readonly confirmTopicRegex = /^yolofarm\/([^/]+)\/sensors\/confirm$/;
   private readonly irrigationTopicRegex =
     /^yolofarm\/([^/]+)\/(control|status)\/irrigation$/;
+
   private readonly mqttDebug = (process.env.MQTT_DEBUG ?? 'true') === 'true';
   private readonly latestSensorByNode = new Map<
     string,
-    { humidity?: number; light?: number }
+    { moisture?: number; light?: number }
   >();
 
   constructor(
@@ -133,15 +137,21 @@ export class MqttService {
     topic: string,
     payload: unknown,
   ): Promise<void> {
-    if (this.sensorTopicRegex.test(topic)) {
-      this.debugLog('[MQTT] Routed to sensor handler', { topic });
-      await this.handleSensorTopic(topic, payload);
+    if (this.confirmTopicRegex.test(topic)) {
+      this.debugLog('[MQTT] Routed to confirmation handler', { topic });
+      await this.handleConfirmTopic(topic, payload as ConfirmPayloadDto);
       return;
     }
 
     if (this.irrigationTopicRegex.test(topic)) {
       this.debugLog('[MQTT] Routed to irrigation handler', { topic });
-      await this.handleIrrigationTopic(topic, payload);
+      await this.handleIrrigationTopic(topic, payload as IrrigationPayloadDto);
+      return;
+    }
+
+    if (this.sensorTopicRegex.test(topic)) {
+      this.debugLog('[MQTT] Routed to sensor handler', { topic });
+      await this.handleSensorTopic(topic, payload);
       return;
     }
 
@@ -158,8 +168,7 @@ export class MqttService {
       return;
     }
 
-    const nodeId = match[1];
-    const sensor = match[2];
+    const [, nodeId, sensor] = match;
     const normalizedSensor =
       this.mqttSensorPayloadAdapterService.normalizeSensorKey(sensor);
     const normalizedPayload = normalizePayload(payload);
@@ -215,6 +224,32 @@ export class MqttService {
       return;
     }
 
+    await this.saveSensorReading(
+      topic,
+      nodeId,
+      sensor,
+      normalizedSensor,
+      value,
+      timestamp,
+      normalizedPayload,
+    );
+    await this.bridgeSensorToEventChaining(
+      nodeId,
+      normalizedSensor,
+      value,
+      topic,
+    );
+  }
+
+  private async saveSensorReading(
+    topic: string,
+    nodeId: string,
+    sensor: string,
+    normalizedSensor: string,
+    value: number,
+    timestamp: Date,
+    normalizedPayload: Record<string, unknown>,
+  ): Promise<void> {
     this.debugLog('[MQTT] Saving sensor reading to MongoDB', {
       topic,
       nodeId,
@@ -262,41 +297,59 @@ export class MqttService {
       });
       throw error;
     }
-
-    await this.bridgeSensorToEventChaining(
-      nodeId,
-      normalizedSensor,
-      value,
-      topic,
-    );
   }
 
   private async handleIrrigationTopic(
     topic: string,
-    payload: unknown,
+    payload: IrrigationPayloadDto,
   ): Promise<void> {
     const match = this.irrigationTopicRegex.exec(topic);
     if (!match) {
       return;
     }
 
-    const nodeId = match[1];
-    const direction = match[2];
-    const normalizedPayload = normalizePayload(payload) ?? {};
+    const [, nodeId, direction] = match;
+    const normalizedPayload =
+      (normalizePayload(payload) as IrrigationPayloadDto) ?? {};
 
-    const durationSecondsRaw =
-      normalizedPayload.durationSeconds ?? normalizedPayload.duration_sec;
-    const durationSeconds = coerceNumber(durationSecondsRaw) ?? 0;
+    await this.saveIrrigationEvent(topic, nodeId, direction, normalizedPayload);
+  }
 
-    const soilMoistureRaw =
-      normalizedPayload.soilMoisture ?? normalizedPayload.soil_moisture;
-    const soilMoisture = coerceNumber(soilMoistureRaw) ?? undefined;
+  private async handleConfirmTopic(
+    topic: string,
+    payload: ConfirmPayloadDto,
+  ): Promise<void> {
+    const match = this.confirmTopicRegex.exec(topic);
+    if (!match) {
+      return;
+    }
 
-    const shouldIrrigateRaw =
-      normalizedPayload.shouldIrrigate ?? normalizedPayload.should_irrigate;
-    const shouldIrrigate = coerceBoolean(shouldIrrigateRaw) ?? false;
+    const [, nodeId] = match;
+    const normalizedPayload =
+      (normalizePayload(payload) as Record<string, unknown>) ?? {};
 
-    const timestamp = resolveTimestamp(normalizedPayload.timestamp);
+    await this.eventChainingService.confirmWatering({
+      deviceId: nodeId,
+      state: String(
+        normalizedPayload.state ?? normalizedPayload.value ?? 'WATERING done',
+      ),
+    });
+  }
+
+  private async saveIrrigationEvent(
+    topic: string,
+    nodeId: string,
+    direction: string,
+    normalizedPayload: IrrigationPayloadDto,
+  ): Promise<void> {
+    const durationSeconds =
+      coerceNumber(normalizedPayload.durationSeconds) ?? 0;
+    const soilMoisture = coerceNumber(normalizedPayload.soilMoisture);
+    const shouldIrrigate =
+      coerceBoolean(normalizedPayload.shouldIrrigate) ?? false;
+
+    const timestamp =
+      resolveTimestamp(normalizedPayload.timestamp) ?? new Date();
 
     await this.irrigationEventModel.create({
       topic,
@@ -306,9 +359,9 @@ export class MqttService {
       status: coerceString(normalizedPayload.status),
       reason: coerceString(normalizedPayload.reason),
       shouldIrrigate,
-      durationSeconds: durationSeconds >= 0 ? durationSeconds : 0,
-      soilMoisture,
-      timestamp: timestamp ?? new Date(),
+      durationSeconds: Math.max(0, durationSeconds),
+      soilMoisture: soilMoisture ?? undefined,
+      timestamp,
       meta: {
         nodeId,
         direction,
@@ -351,7 +404,6 @@ export class MqttService {
     if (!meta || typeof meta !== 'object') {
       return reading;
     }
-
     const sensor = (meta as Record<string, unknown>).sensor;
     if (typeof sensor !== 'string') {
       return reading;
@@ -400,10 +452,10 @@ export class MqttService {
     });
 
     if (
-      latestValues.humidity === undefined ||
+      latestValues.moisture === undefined ||
       latestValues.light === undefined
     ) {
-      this.debugLog('[MQTT] Waiting for both humidity and light', {
+      this.debugLog('[MQTT] Waiting for both moisture and light', {
         nodeId,
         latestValues,
       });
@@ -413,18 +465,21 @@ export class MqttService {
     try {
       this.debugLog('[MQTT] Bridging to event-chaining', {
         nodeId,
-        humidity: latestValues.humidity,
+        moisture: latestValues.moisture,
         light: latestValues.light,
       });
       await this.eventChainingService.processSensorData({
         deviceId: nodeId,
         topic,
-        humidity: latestValues.humidity,
+        moisture: latestValues.moisture,
         light: latestValues.light,
       });
       this.debugLog('[MQTT] Event-chaining processed successfully', {
         nodeId,
       });
+
+      // Clear the cache
+      this.latestSensorByNode.delete(nodeId);
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : 'Unknown error while bridging';
@@ -438,7 +493,7 @@ export class MqttService {
         topic,
         {
           nodeId,
-          humidity: latestValues.humidity,
+          moisture: latestValues.moisture,
           light: latestValues.light,
         },
       );
@@ -451,10 +506,10 @@ export class MqttService {
     }
 
     if (payload === undefined) {
-      console.log(message);
+      this.logger.debug(message);
       return;
     }
 
-    console.log(message, payload);
+    this.logger.debug(`${message} ${JSON.stringify(payload)}`);
   }
 }

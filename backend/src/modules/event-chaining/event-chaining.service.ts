@@ -345,12 +345,21 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
   private decideFromConfirm(
     currentState: DeviceStateDocument,
   ): ChainDecisionResult {
-    if (currentState.state !== ChainState.WATERING) {
+    if (currentState.state === ChainState.MONITOR) {
       return {
         state: currentState.state,
         action: 'none',
         durationSeconds: 0,
-        message: 'Thiết bị không ở trạng thái WATERING để xác nhận.',
+        message: 'Thiết bị không ở trạng thái WATERING/RECOVER để xác nhận.',
+      };
+    }
+
+    if (currentState.state === ChainState.RECOVER) {
+      return {
+        state: ChainState.MONITOR,
+        action: 'none',
+        durationSeconds: 0,
+        message: 'Thiết bị xác nhận đã recover xong, chuyển sang MONITOR.',
       };
     }
 

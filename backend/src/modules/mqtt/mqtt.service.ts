@@ -460,24 +460,24 @@ export class MqttService {
       return;
     }
 
+    const { moisture, light } = latestValues;
+    this.latestSensorByNode.delete(nodeId);
+
     try {
       this.debugLog('[MQTT] Bridging to event-chaining', {
         nodeId,
-        moisture: latestValues.moisture,
-        light: latestValues.light,
+        moisture,
+        light,
       });
       await this.eventChainingService.processSensorData({
         deviceId: nodeId,
         topic,
-        moisture: latestValues.moisture,
-        light: latestValues.light,
+        moisture,
+        light,
       });
       this.debugLog('[MQTT] Event-chaining processed successfully', {
         nodeId,
       });
-
-      // Clear the cache
-      this.latestSensorByNode.delete(nodeId);
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : 'Unknown error while bridging';
@@ -491,8 +491,8 @@ export class MqttService {
         topic,
         {
           nodeId,
-          moisture: latestValues.moisture,
-          light: latestValues.light,
+          moisture,
+          light,
         },
       );
     }

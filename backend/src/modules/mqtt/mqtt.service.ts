@@ -330,9 +330,7 @@ export class MqttService {
 
     await this.eventChainingService.confirmWatering({
       deviceId: nodeId,
-      state: String(
-        normalizedPayload.state ?? normalizedPayload.value ?? 'WATERING done',
-      ),
+      state: String(normalizedPayload.state),
     });
   }
 

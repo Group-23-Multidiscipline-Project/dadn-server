@@ -1,107 +1,296 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
-
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+# Yolofarm Server
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
+- Python 3.10+ (recommended)
+- MongoDB reachable from `MONGO_URI`
+- HiveMQ broker credentials
 
-- **Node.js** (v24)
-- **pnpm** (v8.0.0 or higher) - Package manager
+## Folder structure
 
-  ```bash
-  npm install -g pnpm
-  ```
-
-- **Git** - Version control
-- **Docker** (optional)
-
-### 1. Install Dependencies
-
-```bash
-pnpm install
+```text
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── db.py
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   └── app_routes.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── device_service.py
+│   │   ├── mqtt_client.py
+│   │   └── mqtt_service.py
+│   └── utils/
+│       ├── __init__.py
+│       └── device_state_utils.py
+├── .env
+├── requirements.txt
+└── README.md
 ```
 
-This will install all project dependencies using the lockfile (`pnpm-lock.yaml`).
+Folder/file comments:
 
-### 2. Environment Configuration
+- `app/__init__.py`: Flask app factory, environment validation, CORS, and blueprint registration.
+- `app/config.py`: runtime config classes and required environment-variable validation.
+- `app/db.py`: MongoDB client/database/collection wiring.
+- `app/routes/app_routes.py`: HTTP route handlers (controller layer).
+- `app/services/device_service.py`: business logic for device state and event-log responses.
+- `app/services/mqtt_client.py`: MQTT client initialization and broker connection lifecycle.
+- `app/services/mqtt_service.py`: MQTT-related response payload builders.
+- `app/utils/device_state_utils.py`: shared helpers for datetime parsing/formatting and remaining-time calculation.
+- `.env`: local runtime environment values (not committed for production secrets).
+- `requirements.txt`: Python dependencies for this backend.
+- `README.md`: setup, run instructions, API list, and test scenarios.
 
-Create a `.env` file in the project root with necessary environment variables (see `.env.example` if available).
-
-## Compile and run the project
-
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
-```
-
-## Run in Docker (recommended)
+## Install
 
 ```bash
-docker compose up -d
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## Contribution Workflow
+## Environment variables
 
-When contributing, always create your working branch from `main` and use the following branch naming conventions:
+Create a `.env` file in the `backend` folder:
 
-- `feat/...` for new features
-- `fix/...` for bug fixes
-- `hotfix/...` for urgent production fixes
+```env
+APPLICATION_ENV=development
+MONGO_URI=mongodb://localhost:27017
+MQTT_HOST=your-cluster.s1.eu.hivemq.cloud
+MQTT_PORT=8883
+HIVEMQ_USERNAME=your_username
+HIVEMQ_PASSWORD=your_password
 
-Example:
+# Optional Mongo TLS settings for Atlas/local SSL troubleshooting
+MONGO_TLS_CA_FILE=
+MONGO_TLS_ALLOW_INVALID_CERTS=false
+MONGO_SERVER_SELECTION_TIMEOUT_MS=5000
+```
+
+Required variables validated at startup:
+
+- `MONGO_URI`
+- `MQTT_HOST`
+- `MQTT_PORT`
+- `HIVEMQ_USERNAME`
+- `HIVEMQ_PASSWORD`
+
+How to know MongoDB is connected:
+
+- Start app with `flask --app app:create_app run`.
+- Check startup log:
+  - Success: `MongoDB connected`
+  - Failure: `MongoDB not connected: ...`
+
+For `CERTIFICATE_VERIFY_FAILED` with MongoDB Atlas:
+
+- Preferred: set `MONGO_TLS_CA_FILE` to a valid CA bundle path.
+- Dev fallback only: set `MONGO_TLS_ALLOW_INVALID_CERTS=true`.
+
+## Run
+
+From the `backend` folder:
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b feat/your-feature-name
+source .venv/bin/activate
+flask --app app:create_app run
 ```
 
-For fixes:
+Default server URL: `http://127.0.0.1:5000`
+
+## API endpoints
+
+- `GET /state/<device_id>`
+- `GET /event-logs?deviceId=&topic=&state=&action=&limit=`
+- `GET /mqtt/sensors/history?deviceId=&limit=`
+- `GET /mqtt/irrigation/status?deviceId=`
+- `GET /mqtt/system/logs?deviceId=&limit=`
+
+## Use Cases
+
+### UC1: Sensor monitoring
+
+- Device publishes sensor telemetry (`soil_moisture`, `light`) via MQTT topics under `yolofarm/<device_id>/...`.
+- Backend receives and normalizes incoming data for processing.
+
+### UC2: Check threshold
+
+- Backend evaluates incoming sensor values against irrigation conditions.
+- Typical rule in current flow: `dry soil` and `sufficient light` can trigger watering logic.
+
+### UC3: State change by data-driven
+
+- Backend updates state machine by input data and confirmations: `MONITOR -> WATERING -> RECOVER -> MONITOR`.
+- State transition is driven by sensor payload and device confirmation events on topic `yolofarm/<device_id>/sensors/confirm`.
+
+### UC4: Relay On/off
+
+- On trigger conditions, backend publishes control command to irrigation topic (relay on/off).
+- Command channel: `yolofarm/<device_id>/control/irrigation`.
+
+### UC5: Log realtime (System, Device Logs)
+
+- Backend stores and exposes real-time logs for system/device events.
+- APIs support querying state and logs for monitoring and troubleshooting.
+
+## Architecture
+
+[Architecture DrawIO](https://drive.google.com/file/d/15FUWxON16MQ0kbTjcOKsaFazXyrPCu-i/view?usp=sharing)
+
+### Use case example: `MONITOR -> WATERING -> RECOVER -> MONITOR`
+
+```text
+1) Device publishes:
+ topic: yolofarm/node_01/sensors/soil_moisture  payload: {"value": 10}
+ topic: yolofarm/node_01/sensors/light          payload: {"value": 70}
+
+2) Backend evaluates threshold:
+ moisture < threshold AND light > threshold => state: WATERING
+
+3) Backend publishes control command:
+ topic: yolofarm/node_01/control/irrigation
+ payload: {"action":"start_pump", ...}
+
+4) Device (subscribed to control topic) receives command and turns relay ON.
+
+5) Device publishes confirm when watering done:
+ topic: yolofarm/node_01/sensors/confirm
+ payload: {"value":"WATERING done"}
+
+6) Backend transitions to RECOVER and publishes recover command.
+
+7) Device publishes confirm when recover done:
+ topic: yolofarm/node_01/sensors/confirm
+ payload: {"value":"RECOVERING done"}
+
+8) Backend transitions back to MONITOR.
+```
+
+## Quick test
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b fix/your-fix-name
+curl "http://127.0.0.1:5000/state/node_01"
+curl "http://127.0.0.1:5000/event-logs?deviceId=node_01&limit=10"
 ```
 
-For hotfixes:
+## MQTT Test Scenarios with Mosquitto
+
+## 0. Prepare
+
+Keep this terminal open (IoT device subscribes to) at all times to monitor irrigation control commands (`control/irrigation`) sent by the backend to the device.
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b hotfix/your-hotfix-name
+mosquitto_sub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/control/irrigation" -v
 ```
 
-Always fetch the latest changes:
+## 1. Case 1: Normal Monitoring (Soil Moisture is Sufficient)
+
+**Description:** Soil moisture is sufficient (40%), and light is good (80%).  
+The backend stays in `MONITOR` state and does not publish any command.
+
+Open Terminal 2 (IoT device) and publish:
 
 ```bash
-git fetch -a
+# Send soil moisture (40%)
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 40}'
+
+# Send light (70%)
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 70}'
 ```
+
+**Expected result in Terminal 1:** No message appears.
+
+---
+
+## 2. Case 2: Trigger Irrigation (Dry Soil)
+
+**Description:** Soil is dry (`10% < 20%`) and it is bright (`> 60%`).  
+The backend transitions to `WATERING` and sends a pump-on command.
+
+In Terminal 2 (IoT device), publish:
+
+```bash
+# Send soil moisture (10%)
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 10}'
+
+# Send light (70%)
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 70}'
+```
+
+**Expected result in Terminal 1:**  
+IoT device receiveed a pump-on command from backend:
+
+`yolofarm/node_01/control/irrigation {"traceId":"...","action":"start_pump","status":"pending_on","shouldIrrigate":true,"durationSeconds":300,...}`
+
+## 3. Case 3: Irrigation In Progress
+
+**Description:** Pump is on, backend ?-minute timer is running.  
+The device keeps sending sensor data periodically, but backend ignores it and sends no new command.
+
+In Terminal 2 (IoT device), publish:
+
+```bash
+# Soil moisture increases slightly to 12%
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 12}'
+
+# Light remains the same
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 70}'
+```
+
+**Expected result in Terminal 1:** No additional command is sent.
+
+---
+
+## 4. Case 4: Irrigation Complete
+
+**Description:** ? minutes (?s) have passed.  
+The device sends sensor ticks so backend detects timeout, sends pump-off command, and transitions to `RECOVER`.
+
+> Note: Wait the full ? minutes from Case 2 before running this test.
+
+In Terminal 2 (IoT device), publish:
+
+```bash
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/confirm" -m '{"value": "WATERING done"}'
+```
+
+IoT device received in irrigation topic:
+
+```bash
+yolofarm/node_01/control/irrigation {"traceId":"0795b416-7997-4344-a110-66e514a3da9c","action":"recover","durationSeconds":20,"timestamp":"2026-03-26T03:35:59.544Z"}
+```
+
+IoT device publish after done recovering:
+
+```bash
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/confirm" -m '{"value": "RECOVERING done"}'
+```
+
+```bash
+# Soil is now wetter (30%)
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 30}'
+
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 60}'
+```
+
+## 5. Case 5: Return to Monitoring
+
+**Description:** Pump is off, system is in `RECOVER` phase (waiting for sensor stabilization).  
+After ? minutes (?s), when new sensor data arrives, backend returns to `MONITOR`.
+
+> Note: Wait ? minutes from Case 4.
+
+In Terminal 2 (IoT device), publish:
+
+```bash
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 35}'
+
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 65}'
+```
+
+**Expected result in Terminal 1 (IoT device subscribes):**  
+No control command is published (normal behavior).  
+The loop has now returned to Phase 1 (`MONITOR`).

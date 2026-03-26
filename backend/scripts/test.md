@@ -20,9 +20,9 @@ Open Terminal 2 and publish:
 
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 40}'
 
-# Send light (500)
+# Send light (70%)
 
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 500}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 70}'
 ```
 
 **Expected result in Terminal 1:** No message appears.
@@ -31,7 +31,7 @@ mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u 
 
 ## 2. Case 2: Trigger Irrigation (Dry Soil)
 
-**Description:** Soil is dry (`10% < 20%`) and it is bright (`> 500`).  
+**Description:** Soil is dry (`10% < 20%`) and it is bright (`> 60%`).  
 The backend transitions to `WATERING` and sends a pump-on command.
 
 In Terminal 2, publish:
@@ -42,9 +42,9 @@ In Terminal 2, publish:
 
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 10}'
 
-# Send light (600)
+# Send light (70%)
 
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 600}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 70}'
 ```
 
 **Expected result in Terminal 1:**  
@@ -66,7 +66,7 @@ mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u 
 
 # Light remains the same
 
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 600}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 70}'
 ```
 
 **Expected result in Terminal 1:** No additional command is sent.
@@ -86,26 +86,25 @@ In Terminal 2, publish:
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/confirm" -m '{"value": "WATERING done"}'
 ```
 
+Device received in irrigation topic:
+
+```bash
+yolofarm/node_01/control/irrigation {"traceId":"0795b416-7997-4344-a110-66e514a3da9c","action":"recover","durationSeconds":20,"timestamp":"2026-03-26T03:35:59.544Z"}
+```
+
+Device publish after done recovering:
+
+```bash
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/confirm" -m '{"value": "RECOVERING done"}'
+```
+
 ```bash
 # Soil is now wetter (30%)
 
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 30}'
 
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 500}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 60}'
 ```
-
-**Expected result in Terminal 1:**  
-Backend sends pump-off command:
-
-`yolofarm/node_01/control/irrigation {"traceId":"...","action":"stop_pump","status":"pending_off","shouldIrrigate":false,"durationSeconds":120,...}`
-
-Device sends ACK (pump turned off successfully):
-
-```bash
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/status/irrigation" -m '{"action": "stop_pump", "status": "pump_off"}'
-```
-
----
 
 ## 5. Case 5: Return to Monitoring
 
@@ -119,7 +118,7 @@ In Terminal 2, publish:
 ```bash
 mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/soil_moisture" -m '{"value": 35}'
 
-mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 550}'
+mosquitto_pub -h 370a418923bb43089cf22b46d5af803f.s1.eu.hivemq.cloud -p 8883 -u admin -P Yolofarm23 -t "yolofarm/node_01/sensors/light" -m '{"value": 65}'
 ```
 
 **Expected result in Terminal 1:**  

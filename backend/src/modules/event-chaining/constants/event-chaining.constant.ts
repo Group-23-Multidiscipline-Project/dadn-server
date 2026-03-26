@@ -11,6 +11,6 @@ export const CHAIN_EVENT_TYPES = [
 ] as const;
 
 export const MONITOR_MOISTURE_THRESHOLD = 20;
-export const MONITOR_LIGHT_THRESHOLD = 500; // lux
-export const WATERING_DURATION_MS = ms('20s');
+export const MONITOR_LIGHT_THRESHOLD = 60;
+export const WATERING_DURATION_MS = ms('30s');
 export const RECOVER_DURATION_MS = ms('20s');

@@ -365,7 +365,7 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
 
     return {
       state: ChainState.RECOVER,
-      action: 'none',
+      action: 'recover',
       durationSeconds: RECOVER_DURATION_MS / 1000,
       message: 'Thiết bị xác nhận đã tưới xong, chuyển sang RECOVER.',
     };
@@ -440,6 +440,16 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       });
 
       this.publishActuatorCommand({
+        traceId: input.traceId,
+        deviceId: input.deviceId,
+        action: input.action,
+        durationSeconds: input.durationSeconds,
+        now: input.now,
+      });
+    }
+
+    if (input.action === 'recover') {
+      this.publishRecoverCommand({
         traceId: input.traceId,
         deviceId: input.deviceId,
         action: input.action,
@@ -538,6 +548,46 @@ export class EventChainingService implements OnModuleInit, OnModuleDestroy {
       action: input.action,
       status: input.action === 'start_pump' ? 'pending_on' : 'pending_off',
       shouldIrrigate: input.action === 'start_pump',
+      durationSeconds: input.durationSeconds,
+      timestamp: input.now.toISOString(),
+    });
+
+    if (!this.mqttCommandClient) {
+      this.logger.warn(
+        `MQTT actuator publisher is not initialized, skip publish topic=${topic}`,
+      );
+      return;
+    }
+
+    this.mqttCommandClient.publish(
+      topic,
+      payload,
+      { qos: this.mqttCommandQos },
+      (error?: Error) => {
+        if (error) {
+          this.logger.error(
+            `Failed to publish actuator command topic=${topic}: ${error.message}`,
+            error.stack,
+          );
+          return;
+        }
+
+        this.logger.log(`Published actuator command topic=${topic} ${payload}`);
+      },
+    );
+  }
+
+  private publishRecoverCommand(input: {
+    traceId: string;
+    deviceId: string;
+    action: 'recover';
+    durationSeconds: number;
+    now: Date;
+  }) {
+    const topic = `${this.mqttTopicBase}/${input.deviceId}/control/irrigation`;
+    const payload = JSON.stringify({
+      traceId: input.traceId,
+      action: input.action,
       durationSeconds: input.durationSeconds,
       timestamp: input.now.toISOString(),
     });

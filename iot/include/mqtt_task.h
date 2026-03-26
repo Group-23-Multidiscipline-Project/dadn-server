@@ -3,4 +3,8 @@
 
 void TaskMQTT(void *pvParameters);
 
+void publish_pump_status();
+
+void publish_confirm(String message);
+
 #endif

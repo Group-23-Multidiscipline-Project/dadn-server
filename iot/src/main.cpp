@@ -11,12 +11,10 @@ void setup() {
   //xTaskCreate(TaskLEDControl, "LED Control", 2048, NULL, 2, NULL);
   //xTaskCreate(neo_blinky, "NEO control", 4096, NULL, 2, NULL);
   
-  // Khởi tạo Task Đọc Cảm Biến
-  // Stack: 4096 bytes, Priority: 1 (Bình thường)
+  // Stack: 4096 bytes, Priority: 1 (Normal)
   xTaskCreate(TaskReadSensors, "SensorTask", 4096, NULL, 1, NULL);
   
-  // Khởi tạo Task Truyền thông MQTT
-  // Stack: 8192 bytes (Cần nhiều RAM hơn để xử lý WiFi và JSON), Priority: 2 (Ưu tiên cao hơn chút để tránh rớt mạng)
+  // Stack: 8192 bytes (More RAM is needed to handle WiFi and JSON), Priority: 2 (Slightly higher priority to avoid network drops)
   xTaskCreate(TaskMQTT, "MQTTTask", 8192, NULL, 2, NULL);
 }
 

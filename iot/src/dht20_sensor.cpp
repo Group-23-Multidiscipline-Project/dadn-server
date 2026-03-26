@@ -8,7 +8,6 @@
 DHT20 dht;
 
 void dht20_init() {
-  Wire.begin(); 
   dht.begin();
 }
 

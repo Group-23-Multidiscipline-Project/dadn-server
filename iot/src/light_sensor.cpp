@@ -8,6 +8,6 @@ void light_sensor_init() {
 
 void light_sensor_read_data() {
   int rawLight = analogRead(LIGHT_SENSOR_PIN);
-  Serial.printf("[Raw Light: %d\n]", rawLight); // In ra để xem giá trị thực
+  // Serial.printf("[Raw Light: %d]\n", rawLight); 
   currentLightLevel = constrain(map(rawLight, 0, 4095, 0, 100), 0, 100);
 }

@@ -6,9 +6,9 @@
 #include "pump_relay.h"
 #include "lcd_display.h"
 #include "globals.h"
+#include "mqtt_task.h"
 
 void TaskReadSensors(void *pvParameters) {
-  // Khởi tạo
   dht20_init();
   soil_sensor_init();
   light_sensor_init();
@@ -17,20 +17,49 @@ void TaskReadSensors(void *pvParameters) {
 
   Serial.println("[SYSTEM] Đã khởi tạo xong phần cứng.");
 
+  int sensorReadCounter = 0;  // The counter reads the sensor every 5 seconds
+
   while(1) {
-    // 1. Đọc dữ liệu từ cảm biến vào các biến global
-    dht20_read_data();
-    soil_sensor_read_data();
-    light_sensor_read_data();
+    if (isTimerActive) {
+      remainingTime--;
+      if (remainingTime <= 0) {
+        isTimerActive = false;
 
-    // 2. Xuất ra Serial Monitor để debug
-    Serial.printf("Data: T=%.1f, H=%.1f, S=%.1f, L=%.1f\n", 
-                  currentAirTemp, currentAirHumidity, currentSoilMoisture, currentLightLevel);
+        if (isPumpOn) {
+          // Case 1: Just finished watering countdown
+          Serial.println("[TIMER] Đã hết thời gian bơm, gửi WATERING done.");
+          pump_turn_off();
+          publish_confirm("WATERING done");
+        }
+        else if (isRecovering) {
+          // Case 2: Just finished the recovery countdown
+          Serial.println("[TIMER] Đã hết thời gian recover, gửi RECOVERING done.");
+          isRecovering = false;
+          publish_confirm("RECOVERING done");
+        }
+      }
+    }
 
-    // 3. Xuất ra màn hình LCD
+    if (sensorReadCounter == 0) {
+      dht20_read_data();
+      soil_sensor_read_data();
+      light_sensor_read_data();
+
+      Serial.printf("Data: T=%.1f, H=%.1f, S=%.1f, L=%.1f | Bơm: %s | Mode: %s\n", 
+                    currentAirTemp, currentAirHumidity, currentSoilMoisture, currentLightLevel,
+                    isPumpOn ? "ON" : "OFF",
+                    isRecovering ? "RECOVERING" : "MANUAL");
+    }
+    
+
+    // LCD UPDATE
     lcd_update_data();
     
-    // Đợi 5 giây cho lần cập nhật kế tiếp
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    sensorReadCounter++;
+    if (sensorReadCounter >= 5) {
+      sensorReadCounter = 0;
+    }
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }

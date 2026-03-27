@@ -43,7 +43,6 @@ void lcd_update_data() {
     lcd.setCursor(9, 0); 
     lcd.print("H:"); lcd.print(currentAirHumidity, 0); lcd.print("%");
 
-
     lcd.setCursor(0, 1);
     lcd.print("S:"); lcd.print(currentSoilMoisture, 0); lcd.print("%");
     lcd.setCursor(9, 1);

@@ -21,7 +21,7 @@ String soil_topic = "yolofarm/" + NODE_ID + "/sensors/soil_moisture";
 String light_topic = "yolofarm/" + NODE_ID + "/sensors/light";
 String control_topic = "yolofarm/" + NODE_ID + "/control/irrigation";
 String status_topic = "yolofarm/" + NODE_ID + "/status/irrigation";
-String confirm_topic = "yolofarm/" + NODE_ID + "/sensor/confirm";
+String confirm_topic = "yolofarm/" + NODE_ID + "/sensors/confirm";
 
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
@@ -54,6 +54,7 @@ void publish_pump_status() {
     StaticJsonDocument<100> docStatus;
     docStatus["isPumpOn"] = isPumpOn;
     docStatus["isRecoverMode"] = isRecovering;
+    docStatus["state"] = isRecovering ? "RECOVERING" : (isPumpOn ? "PUMP_ON" : "PUMP_OFF");
     
     char bufferStatus[100];
     serializeJson(docStatus, bufferStatus);
@@ -89,13 +90,16 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       Serial.printf("[MQTT] Bật bơm trong %d giây\n", remainingTime);
     }
     pump_turn_on();
+    publish_pump_status();
   } else if (action == "recover") {
+    isRecovering = true;
     pump_turn_off();  
     if (doc.containsKey("durationSeconds")) {
       remainingTime = doc["durationSeconds"].as<int>();
       isTimerActive = true;
       Serial.printf("[MQTT] Lệnh từ Server: Recovering %d giây\n", remainingTime);
     }
+    publish_pump_status();
   } else if (action == "stop_pump") { 
     isTimerActive = false;
     isRecovering = false;

@@ -29,12 +29,14 @@ void TaskReadSensors(void *pvParameters) {
           // Case 1: Just finished watering countdown
           Serial.println("[TIMER] Đã hết thời gian bơm, gửi WATERING done.");
           pump_turn_off();
+          publish_pump_status();
           publish_confirm("WATERING done");
         }
         else if (isRecovering) {
           // Case 2: Just finished the recovery countdown
           Serial.println("[TIMER] Đã hết thời gian recover, gửi RECOVERING done.");
           isRecovering = false;
+          publish_pump_status();
           publish_confirm("RECOVERING done");
         }
       }

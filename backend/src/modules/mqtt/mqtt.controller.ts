@@ -10,6 +10,7 @@ import { SensorHistoryQueryDto } from './dto/sensor-history-query.dto';
 import { SystemLogQueryDto } from './dto/system-log-query.dto';
 import { MqttService } from './mqtt.service';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { SensorValueDto } from './dto/sensor.dto';
 
 @ApiTags('mqtt')
 @Controller('mqtt')
@@ -18,7 +19,7 @@ export class MqttController {
 
   @MessagePattern('#')
   async handleIncomingMessage(
-    @Payload() payload: unknown,
+    @Payload() payload: SensorValueDto,
     @Ctx() context: MqttContext,
   ): Promise<void> {
     await this.mqttService.handleIncomingMessage(payload, context);

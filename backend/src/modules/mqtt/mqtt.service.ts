@@ -26,10 +26,13 @@ import { MqttSensorPayloadAdapterService } from './mqtt-sensor-payload-adapter.s
 import { IrrigationPayloadDto } from './dto/irrigation.dto';
 import { ConfirmPayloadDto } from './dto/confirm-watered.dto';
 
+import { IncomingPipeline } from 'src/shared/pipes/incoming.pipe';
+import { ALLOWED_TOPICS } from 'src/shared/constants/topics';
+import { SensorValueDto } from './dto/sensor.dto';
+
 @Injectable()
 export class MqttService {
   private readonly logger = new Logger(MqttService.name);
-
   private readonly sensorTopicRegex = /^yolofarm\/([^/]+)\/sensors\/([^/]+)$/;
   private readonly confirmTopicRegex = /^yolofarm\/([^/]+)\/sensors\/confirm$/;
   private readonly irrigationTopicRegex =
@@ -53,12 +56,20 @@ export class MqttService {
   ) {}
 
   async handleIncomingMessage(
-    payload: unknown,
+    payload: SensorValueDto,
     context: MqttContext,
   ): Promise<void> {
     const topic = context.getTopic();
     if (!topic) {
       this.debugLog('[MQTT] Received message without topic', { payload });
+      return;
+    }
+
+    const incomingPipe = new IncomingPipeline(ALLOWED_TOPICS);
+    try {
+      incomingPipe.transform(payload, { type: 'body', data: topic });
+    } catch (err) {
+      this.logger.warn(`[MQTT] Incoming message validation failed: ${err}`);
       return;
     }
 
@@ -151,17 +162,16 @@ export class MqttService {
 
     if (this.sensorTopicRegex.test(topic)) {
       this.debugLog('[MQTT] Routed to sensor handler', { topic });
-      await this.handleSensorTopic(topic, payload);
+      await this.handleSensorTopic(topic, payload as SensorValueDto);
       return;
     }
 
-    this.debugLog('[MQTT] Topic ignored (regex not matched)', { topic });
     this.logger.debug(`Ignored topic: ${topic}`);
   }
 
   private async handleSensorTopic(
     topic: string,
-    payload: unknown,
+    payload: SensorValueDto,
   ): Promise<void> {
     const match = this.sensorTopicRegex.exec(topic);
     if (!match) {

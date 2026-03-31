@@ -1,4 +1,4 @@
-Optimizing tool selection...# MQTT Test Scenarios with Mosquitto - Event Chaining IoT
+# MQTT Test Scenarios with Mosquitto - Event Chaining IoT
 
 ## 0. Prepare
 

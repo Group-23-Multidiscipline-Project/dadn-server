@@ -4,16 +4,14 @@ import {
   ArgumentMetadata,
   BadRequestException,
 } from '@nestjs/common';
-import { SensorValueDto } from 'src/modules/mqtt/dto/sensor.dto';
 
 @Injectable()
 export class IncomingPipeline implements PipeTransform {
   constructor(private readonly allowedTopics: string[] = []) {}
 
-  transform(value: SensorValueDto, metadata: ArgumentMetadata) {
-    // { 'value' : <number> }
-    if (!value || !('value' in value)) {
-      throw new BadRequestException('Payload must contain a value field');
+  transform(value: unknown, metadata: ArgumentMetadata) {
+    if (!value) {
+      throw new BadRequestException('Payload must not be empty');
     }
 
     if (metadata && metadata.data && this.allowedTopics.length > 0) {

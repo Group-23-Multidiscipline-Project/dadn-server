@@ -1,0 +1,46 @@
+@startuml smartAgri_streaming
+title Smart Agriculture Streaming System - UML Component Diagram
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "Device Layer" {
+  component "ESP32-S3 Node\n- Sensor Reader\n- Pump Controller\n- Local Timer/State" as ESP
+}
+
+package "Edge Layer (Laptop 1)" {
+  component "Edge Gateway Service\n- UDP/CoAP Receiver\n- Protobuf Decoder\n- Retry/Buffer\n- Command Router" as GW
+}
+
+package "Cloud Layer (Laptop 2)" {
+  component "Cloud Ingest Service" as INGEST
+  component "Stream Bus\n(Redpanda/Kafka)" as BUS
+  component "Rule Engine\n(Irrigation Logic)" as RULE
+  database "Time-Series DB\n(InfluxDB/Timescale)" as TSDB
+  database "Config/User DB\n(PostgreSQL/MongoDB)" as APPDB
+  component "API Service\n(REST/GraphQL)" as API
+  component "Realtime Push Service\n(WebSocket/SSE)" as RT
+}
+
+package "Client Layer" {
+  component "Web App Dashboard" as WEB
+  component "Mobile App" as MOB
+}
+
+ESP --> GW : Telemetry + Heartbeat\nUDP/CoAP + Protobuf + seq/ack
+GW --> ESP : Command + Ack\nUDP/CoAP
+
+GW --> INGEST : Bidirectional Stream\nWebTransport over HTTP/3 (QUIC)\n(fallback WSS)
+INGEST --> BUS : publish telemetry
+BUS --> RULE : consume events
+RULE --> BUS : publish commands/events
+RULE --> TSDB : write metrics/history
+API --> APPDB : config/user CRUD
+API --> TSDB : query historical telemetry
+RT --> WEB : realtime stream\nWebSocket/SSE
+RT --> MOB : realtime stream\nWebSocket/SSE
+WEB --> API : HTTPS + JWT
+MOB --> API : HTTPS + JWT
+
+BUS --> RT : realtime event fanout
+BUS --> API : command/status projection
+@enduml

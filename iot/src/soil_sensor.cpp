@@ -10,6 +10,6 @@ void soil_sensor_read_data() {
   int rawSoil = analogRead(SOIL_MOISTURE_PIN);
   
   currentSoilMoisture = map(rawSoil, 0, 4095, 0, 100);
-  Serial.printf("[Raw Soil: %d]\n", rawSoil);
+  //Serial.printf("[Raw Soil: %d]\n", rawSoil);
   //currentSoilMoisture = rawSoil;
 }

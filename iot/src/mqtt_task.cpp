@@ -49,20 +49,20 @@ void publish_confirm(String message) {
   }
 }
 
-void publish_pump_status() {
-  if (client.connected()) {
-    StaticJsonDocument<100> docStatus;
-    docStatus["isPumpOn"] = isPumpOn;
-    docStatus["isRecoverMode"] = isRecovering;
-    docStatus["state"] = isRecovering ? "RECOVERING" : (isPumpOn ? "PUMP_ON" : "PUMP_OFF");
+// void publish_pump_status() {
+//   if (client.connected()) {
+//     StaticJsonDocument<100> docStatus;
+//     docStatus["isPumpOn"] = isPumpOn;
+//     docStatus["isRecoverMode"] = isRecovering;
+//     docStatus["state"] = isRecovering ? "RECOVERING" : (isPumpOn ? "PUMP_ON" : "PUMP_OFF");
     
-    char bufferStatus[100];
-    serializeJson(docStatus, bufferStatus);
-    client.publish(status_topic.c_str(), bufferStatus);
+//     char bufferStatus[100];
+//     serializeJson(docStatus, bufferStatus);
+//     client.publish(status_topic.c_str(), bufferStatus);
     
-    Serial.println("[MQTT] Đã cập nhật trạng thái Bơm lên Server");
-  }
-}
+//     Serial.println("[MQTT] Đã cập nhật trạng thái Bơm lên Server");
+//   }
+// }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String messageTemp;
@@ -81,6 +81,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // Get action value ("start_pump" or "stop_pump")
   String action = doc["action"].as<String>();
+  //Serial.println(action);
 
   if (action == "start_pump") {
     isRecovering = false;
@@ -90,7 +91,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       Serial.printf("[MQTT] Bật bơm trong %d giây\n", remainingTime);
     }
     pump_turn_on();
-    publish_pump_status();
+    //publish_pump_status();
   } else if (action == "recover") {
     isRecovering = true;
     pump_turn_off();  
@@ -99,20 +100,21 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       isTimerActive = true;
       Serial.printf("[MQTT] Lệnh từ Server: Recovering %d giây\n", remainingTime);
     }
-    publish_pump_status();
+    //publish_pump_status();
   } else if (action == "stop_pump") { 
     isTimerActive = false;
     isRecovering = false;
     remainingTime = 0;
     pump_turn_off();
-    publish_pump_status();
+    //publish_pump_status();
+    publish_confirm("WATERING done");
   }
 }
 
 void TaskMQTT(void *pvParameters) {
   // Connect wifi
   Serial.print("[WiFi] Đang kết nối...");
-  WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_STA); // Mode station -> client
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -159,23 +161,27 @@ void TaskMQTT(void *pvParameters) {
     if (now - lastPublish > PUBLISH_INTERVAL) {
       lastPublish = now;
 
-      // JSON Soil_moisture: {"value": 45.0}
-      StaticJsonDocument<100> docSoil;
-      docSoil["value"] = currentSoilMoisture;
-      char bufferSoil[100];
-      serializeJson(docSoil, bufferSoil);
-      client.publish(soil_topic.c_str(), bufferSoil);
+      // Do not publish periodic sensor data while watering/recovering.
+      if (isPumpOn || isRecovering) {
+        Serial.println("[MQTT] Dang watering/recovering, bo qua publish dinh ky.");
+      } else {
+        // JSON Soil_moisture: {"value": 45.0}
+        StaticJsonDocument<100> docSoil;
+        docSoil["value"] = currentSoilMoisture;
+        char bufferSoil[100];
+        serializeJson(docSoil, bufferSoil);
+        client.publish(soil_topic.c_str(), bufferSoil);
 
-      // JSON Light-level: {"value": 80}
-      StaticJsonDocument<100> docLight;
-      docLight["value"] = currentLightLevel;
-      char bufferLight[100];
-      serializeJson(docLight, bufferLight);
-      client.publish(light_topic.c_str(), bufferLight);
+        // JSON Light-level: {"value": 80}
+        StaticJsonDocument<100> docLight;
+        docLight["value"] = currentLightLevel;
+        char bufferLight[100];
+        serializeJson(docLight, bufferLight);
+        client.publish(light_topic.c_str(), bufferLight);
 
-      publish_pump_status();
-      
-      Serial.printf("[MQTT] Publish -> Soil: %.1f%% | Light: %.1f%%\n", currentSoilMoisture, currentLightLevel);
+        //publish_pump_status();
+        Serial.printf("[MQTT] Publish -> Soil: %.1f%% | Light: %.1f%%\n", currentSoilMoisture, currentLightLevel);
+      }
     }
 
     // Delay 10ms 
